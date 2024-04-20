@@ -50,7 +50,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(500)
-                .send({ message: "custom error response" });
+                .send(error);
         }
     }
 
@@ -60,6 +60,20 @@ export class ScenarioService {
             return res
                 .status(200)
                 .send(data);
+        } catch (error) {
+            console.log(error);
+            return res
+                .status(400)
+                .send(error);
+        }
+    }
+
+    async getCompanyScenarios(req: Request, res: Response) {
+        try {
+            const phone_number_id = req.params?.phone_number_id as string;
+            if (!phone_number_id) return res.status(404).send("please provide company phone_number_id");
+            const data = await repository.getCompanyScenarios(phone_number_id);
+            return res.status(200).send(data);
         } catch (error) {
             console.log(error);
             return res
@@ -89,7 +103,7 @@ export class ScenarioService {
     async getScenario(req: Request, res: Response) {
         try {
             const scenarioId = req.params?.id as string;
-            if (!scenarioId) return ErrorResponse(404, "please provide scenario id");
+            if (!scenarioId) return res.status(404).send("please provide scenario id");
 
             const data = await repository.getScenarioById(scenarioId)
             return res

@@ -48,7 +48,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
     console.dir(body, { depth: null });
     for (let [phone, session] of sessions) {
         for (let [company, conversat] of session) {
-            if (chatSessionTimeout(conversat.timeout, new Date()) > 2) {
+            if (chatSessionTimeout(conversat.timeout, new Date()) > 10) {
                 const token = (await credentialsRepository.getByPhoneNumber(company)).token;
                 await forbiddenUserResponse({
                     recipientPhone: phone,
@@ -161,7 +161,6 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                         sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
                     }
                 }
-
             }
             
             return waResponse;
@@ -335,7 +334,8 @@ export const saveQuestion = (question: QuestionModel) => {
 export const chatToString = async (chats: Chat[], recipientPhone: string, username: string, phoneNumberId: string = '', company: string = ''): Promise<SendWATextModel> => {
     let text = `Merci *${username}* pour cet échange, veuillez trouver ci-dessous le résumé de nos échanges.\n\n`;
     
-    if (phoneNumberId.trim() === "100609346426084") {
+    // Fete des meres
+    if (phoneNumberId.trim() === "299462959914851") {
         text += `Nous tenons à vous remercier pour votre confiance et votre fidélité. C'est grâce à vous que nous pouvons continuer à servir notre communauté avec dévouement et engagement. Nous vous souhaitons à vous et à vos familles une merveilleuse fête des mères, pleine d'amour, de bonheur et de beaux souvenirs.\n\nVous recevrez 1000 frs de crédit téléphonique sous 24H.\n\nFaites participer vos proches en leurs envoyant le message suivant.`;
     } else {
         for (let chat of chats) {
@@ -343,7 +343,8 @@ export const chatToString = async (chats: Chat[], recipientPhone: string, userna
             text += `*${company}*: ${chat.send}\n*${username}*: ${chat.received}\n\n`;
         }
 
-        if (phoneNumberId.trim() === "266752343194812") {
+        // Ketourah
+        if (phoneNumberId.trim() === "100609346426084") {
             text += `Cliquez sur le lien ci-dessous pour choisir une date et une plage horaire pour vos soins ou votre consultation.`;
         }
     }
@@ -460,6 +461,96 @@ export const sendTemplateMessage = async (phone_number: string, phone_number_id:
         },
         headers: {
             "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+};
+
+export const sendTemplateOfProductsCatalog = async (phone_number: string, phone_number_id: string, token: string) => {
+    return axios({
+        method: "POST",
+        url: `https://graph.facebook.com/v18.0/100609346426084/messages`,
+        data: {
+            messaging_product: "whatsapp",
+            to: phone_number,
+            type: "template",
+            template: {
+                name: "ketourah_mpm",
+                language: {
+                    code: "fr"
+                },
+                components: [
+                    {
+                        type: "button",
+                        sub_type: "mpm",
+                        index: 0,
+                        parameters: [
+                            {
+                                type: "action",
+                                action: {
+                                    thumbnail_product_retailer_id: "9e2yp5shjk",
+                                    sections: [
+                                        {
+                                            title: "Soins",
+                                            product_items: [
+                                                {
+                                                    product_retailer_id: "thgtmt61ki"
+                                                },
+                                                {
+                                                    product_retailer_id: "pn837nlskk"
+                                                },
+                                                {
+                                                    product_retailer_id: "lh9dgskord"
+                                                },
+                                                {
+                                                    product_retailer_id: "d84a0aaqw2"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            title: "Styling",
+                                            product_items: [
+                                                {
+                                                    product_retailer_id: "chb72mov0s"
+                                                },
+                                                {
+                                                    product_retailer_id: "lzop24kdls"
+                                                },
+                                                {
+                                                    product_retailer_id: "mn7040jh0t"
+                                                }
+                                            ]
+                                        },
+                                        {
+                                            title: "Entretien cheveux",
+                                            product_items: [
+                                                {
+                                                    product_retailer_id: "9e2yp5shjk"
+                                                },
+                                                {
+                                                    product_retailer_id: "0wcq4qefe4"
+                                                },
+                                                {
+                                                    product_retailer_id: "psx0js7qhs"
+                                                },
+                                                {
+                                                    product_retailer_id: "6m5x44mm4k"
+                                                },
+                                                {
+                                                    product_retailer_id: "sibqcu9tmt"
+                                                }
+                                            ]
+                                        }
+                                    ]
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        headers: {
+            "Authorization": `Bearer EAAizDOZAPPVIBO9sihZC4ZB0j5ft7TfMqhvPdIO38cg5ZAAbdNhczVUgHH2GiwLZCqtZANZBl1jZBrstlGfzZAJXzEUvGFN4UTNNPszoW1rM8OlRngHZBIMKivERzcbZClWPfcg2ZCVPTkhgc3EvPSAJgFFa6V7PvMGYuKO0V6ZCsnQFuEGcyIa1ImUDhT9hxvgSSjFZBJ`,
             "Content-Type": "application/json"
         }
     });

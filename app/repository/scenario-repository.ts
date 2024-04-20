@@ -11,7 +11,8 @@ export class ScenarioRespository {
         description,
         interactive_labels,
         times,
-        keywords
+        keywords,
+        company_id
     }: ScenarioInput) {
         console.log(interactive_labels);
         return scenarios.create({
@@ -22,7 +23,8 @@ export class ScenarioRespository {
             active: false,
             interactive_labels,
             times,
-            keywords
+            keywords,
+            company_id
         });
     }
 
@@ -39,6 +41,10 @@ export class ScenarioRespository {
 
     async getScenarioByPhoneNumberId(phone_number_id: string) {
         return scenarios.findOne({ phone_number_id, active: true });
+    }
+
+    async getCompanyScenarios(phone_number_id: string) {
+        return scenarios.find({ phone_number_id });
     }
 
     async updateScenario({

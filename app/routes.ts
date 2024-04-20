@@ -40,6 +40,11 @@ router.post(
     scenarioService.activeScenario
 );
 
+router.get(
+    '/scenarios/:phone_number_id',
+    scenarioService.getCompanyScenarios
+);
+
 // CHATBOT
 router.get(
     '/webhook',

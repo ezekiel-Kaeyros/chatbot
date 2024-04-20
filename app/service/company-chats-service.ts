@@ -5,7 +5,7 @@ import { CredentialsRepository } from "../repository/credentials-repository";
 import { Request, Response } from 'express';
 import { sendChat } from "../utility/chatbot-inmemory-process";
 import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
-import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
+import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendTemplateOfProductsCatalog, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
 import { sessions } from "../models/chat-model";
 import { ClientPointModel } from "../models/client-point-model";
 import { TombolaProductModel } from "../models/tombola-product-model";
@@ -115,6 +115,54 @@ export class CompanyChatsService {
                     }
     
                 } else {
+                    if (waResponse.type === "order") {
+                        console.log("___________________PRODUCTS ORDER______________________");
+                        console.dir(waResponse.data, { depth: null });
+
+                        const products = waResponse.data.order.product_items as Array<{
+                            product_retailer_id: string,
+                            quantity: string,
+                            item_price: string,
+                            currency: string
+                        }>;
+
+                        let order = ``;
+                        let total = 0;
+                        for (let product of products) {
+                            order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *${product.item_price}*\nmontant: *${(+product.quantity) * (+product.item_price)}*\n\n`;
+                            total += (+product.quantity) * (+product.item_price);
+                        }
+                        order += `Total: *${total}*\n\n`;
+
+                        data = await chatToString(
+                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats,
+                            waResponse.phone_number,
+                            waResponse.name,
+                            waResponse.phone_number_id,
+                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                        ) as SendWATextModel;
+                        data.text.body += `\n\nVotre command\n${order}`;
+
+                        sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                        // Save chat
+                        await companyChatsRepository.addChatMessage(
+                            waResponse.phone_number_id,
+                            waResponse.phone_number,
+                            {
+                                text: data.text.body,
+                                is_bot: true,
+                                is_admin: false,
+                                date: new Date()
+                            });
+
+                        await sendWhatsappMessage(
+                            waResponse.phone_number_id,
+                            token,
+                            data
+                        );
+                        return res.status(200).send({});
+                    }
+
                     if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
                         const scenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
                         if (scenario.keywords && scenario.keywords.length !== 0) {
@@ -122,9 +170,12 @@ export class CompanyChatsService {
                             if (waResponse.type === "text") inputText = waResponse.data.text.body.trim();
                             if (waResponse.type === "button") inputText = waResponse.data.button.text.trim();
                             if (!scenario.keywords.includes(inputText)) {
+                                let message = `Utilisez le(s) mot(s) clé(s) suivant\n`;
+                                scenario.keywords.forEach(word => message += `*${word}* `);
+                                message += `pour initialiser la conservation ou utilisez un lien s'il vous a été envoyé.`;
                                 await forbiddenUserResponse({
                                     recipientPhone: waResponse.phone_number,
-                                    message: "Cliquez sur l'un des buttons ou sur le lien du message que vous avez reçu."
+                                    message: message
                                 }, waResponse.phone_number_id, token);
                                 return res.status(200).send({});
                             }
@@ -287,6 +338,16 @@ export class CompanyChatsService {
                         }
                     } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "button") {
                         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+                            // SEND TEMPLATE OF PRODUCTS CATALOG
+                            if (waResponse.phone_number_id === "100609346426084") {
+                                await sendTemplateOfProductsCatalog(
+                                    waResponse.phone_number,
+                                    waResponse.phone_number_id,
+                                    "token"
+                                );
+                                return res.status(200).send({});
+                            } // END TEMPLATE OF PRODUCTS CATALOG
+
                             const id = waResponse.data.interactive.button_reply.id;
                             const label = waResponse.data.interactive.button_reply.title;
                             const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
@@ -401,6 +462,15 @@ export class CompanyChatsService {
                                 sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion
                             );
                         }
+                    } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "catalog") {
+                        if (waResponse.type === "interactive" && waResponse.data.interactive.type === "catalog_message") {
+
+                        } else {
+                            data = askQuestion(
+                                waResponse.phone_number,
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion
+                            );
+                        }
                     }
                     
                     const status = await sendWhatsappMessage(
@@ -422,7 +492,7 @@ export class CompanyChatsService {
                                 date: new Date()
                             });
                     } else {
-                        if (waResponse.phone_number_id === "100609346426084") {
+                        if (waResponse.phone_number_id === "299462959914851") {
                             await forbiddenUserResponse({
                                 recipientPhone: waResponse.phone_number,
                                 message: `Participez à la fêtes des mères et recevez 1000 frs de crédit de communication en cliquant sur ce lien.\nhttps://wa.me/message/UJBNPI6GLOCTN1`

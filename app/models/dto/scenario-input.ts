@@ -29,6 +29,7 @@ export class ScenarioInput {
     interactive_labels?: FilterLabels[];
     times?: number = -1;
     keywords?: string[];
+    company_id?: string = "679854450187854";
 }
 
 export type FilterLabels = {

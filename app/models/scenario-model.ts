@@ -30,6 +30,7 @@ type ScenarioModel = {
     users?: User[];
     times?: number;
     keywords?: string[];
+    company_id?: string;
 };
 
 export type ScenarioDoc = mongoose.Document & ScenarioModel;
@@ -44,7 +45,8 @@ const scenarioSchema = new mongoose.Schema(
         interactive_labels: [{}],
         users: [{}],
         times: Number,
-        keywords: [String]
+        keywords: [String],
+        company_id: String
     },
     {
         toJSON: {

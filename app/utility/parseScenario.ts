@@ -1,6 +1,10 @@
+import axios from "axios";
+import { PullWhatappAccessData } from "../message-queue";
 import { FilterLabels, QuestionModel, ResponseModel } from "../models/dto/scenario-input";
+import { WhatsappAccessModel } from "../models/whatsapp-access-model";
+import { CatalogModel } from "../models/catalog-model";
 
-export const parseScenario = async (questions: QuestionModel[]): Promise<boolean> => {
+export const parseScenario = async (questions: QuestionModel[], companyId: string = "679854450187854"): Promise<boolean> => {
     for (let question of questions) {
 
         let badNbr;
@@ -26,7 +30,27 @@ export const parseScenario = async (questions: QuestionModel[]): Promise<boolean
                 if (badNbr) return true;
             }
         } else if (question.responses.length === 1 && question.responses[0].label.lastIndexOf("_") > 0) {
-            question.responseType = "catalog";
+            const { status: whatsappAccessStatus, data: whatsappAccessData } = await PullWhatappAccessData({
+                phone_number_id: "100609346426084"
+            });
+            if (whatsappAccessStatus !== 200) {
+                return false;
+            } else {
+                const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
+                const { status, data } = await getCatalogList(companyId, whatsappAccess.token);
+                if (status !== 200) {
+                    return false;
+                } else {
+                    const catalogList = data.data as CatalogModel[];
+                    if (!(catalogList.find(catalog => catalog.name === question.responses[0].label))) {
+                        console.log(`Catalog ${question.responses[0].label} does not exist`);
+                        return false;
+                    } else {
+                        console.log(`Catalog ${question.responses[0].label} exists`);
+                        question.responseType = "catalog";
+                    }
+                }
+            }
         } else {
             return true;
         }
@@ -145,4 +169,26 @@ const cleanData = async (data: QuestionModel | ResponseModel) => {
         data.responses.forEach(r => cleanData(r));
       }
     }
+};
+
+const isCatalogName = async (catalogName: string) => {
+    const { status: whatsappAccessStatus, data: whatsappAccessData } = await PullWhatappAccessData({
+        phone_number_id: "100609346426084"
+    });
+    if (whatsappAccessStatus !== 200) {
+
+    } else {
+
+    }
+};
+
+const getCatalogList = async (companyId: string, token: string) => {
+    return axios({
+        method: "GET",
+        url: `https://graph.facebook.com/v18.0/${companyId}/owned_product_catalogs`,
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
 };
