@@ -340,6 +340,22 @@ export class CompanyChatsService {
                         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
                             // SEND TEMPLATE OF PRODUCTS CATALOG
                             if (waResponse.phone_number_id === "100609346426084") {
+                                const id = waResponse.data.interactive.button_reply.id;
+                                const label = waResponse.data.interactive.button_reply.title;
+                                const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = label;
+        
+                                // Save chat
+                                await companyChatsRepository.addChatMessage(
+                                    waResponse.phone_number_id,
+                                    waResponse.phone_number,
+                                    {
+                                        text: label,
+                                        is_bot: false,
+                                        is_admin: false,
+                                        date: new Date()
+                                    });
+
                                 await sendTemplateOfProductsCatalog(
                                     waResponse.phone_number,
                                     waResponse.phone_number_id,
