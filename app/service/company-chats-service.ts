@@ -129,10 +129,10 @@ export class CompanyChatsService {
                         let order = ``;
                         let total = 0;
                         for (let product of products) {
-                            order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *${product.item_price}*\nmontant: *${(+product.quantity) * (+product.item_price)}*\n\n`;
+                            order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
                             total += (+product.quantity) * (+product.item_price);
                         }
-                        order += `Total: *${total}*\n\n`;
+                        order += `Total: *€${total}*\n\n`;
 
                         data = await chatToString(
                             sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats,
