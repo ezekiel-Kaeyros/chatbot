@@ -50,7 +50,7 @@ let ScenarioService = class ScenarioService {
                 if (yield (0, parseScenario_1.longLabel)(input.description))
                     throw new Error("Long label, more characters than max!");
                 if (yield (0, parseScenario_1.duplicatedLabel)(input.description))
-                    throw new Error("Duplicate questions or answers!");
+                    throw new Error("Duplicate questions or answers, or check your products template if threre is!");
                 const badNbr = yield (0, parseScenario_1.parseScenario)(input.description);
                 if (badNbr)
                     return res.status(400).send("Number of responses not supported!");
@@ -68,7 +68,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send({ message: "custom error response" });
+                    .send(error);
             }
         });
     }
@@ -79,6 +79,24 @@ let ScenarioService = class ScenarioService {
                 return res
                     .status(200)
                     .send(data);
+            }
+            catch (error) {
+                console.log(error);
+                return res
+                    .status(400)
+                    .send(error);
+            }
+        });
+    }
+    getCompanyScenarios(req, res) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const phone_number_id = (_a = req.params) === null || _a === void 0 ? void 0 : _a.phone_number_id;
+                if (!phone_number_id)
+                    return res.status(404).send("please provide company phone_number_id");
+                const data = yield repository.getCompanyScenarios(phone_number_id);
+                return res.status(200).send(data);
             }
             catch (error) {
                 console.log(error);
@@ -114,7 +132,7 @@ let ScenarioService = class ScenarioService {
             try {
                 const scenarioId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!scenarioId)
-                    return (0, response_1.ErrorResponse)(404, "please provide scenario id");
+                    return res.status(404).send("please provide scenario id");
                 const data = yield repository.getScenarioById(scenarioId);
                 return res
                     .status(200)

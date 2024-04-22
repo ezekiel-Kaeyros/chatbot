@@ -14,7 +14,8 @@ const scenarioSchema = new mongoose_1.default.Schema({
     interactive_labels: [{}],
     users: [{}],
     times: Number,
-    keywords: [String]
+    keywords: [String],
+    company_id: String
 }, {
     toJSON: {
         transform(doc, ret, options) {

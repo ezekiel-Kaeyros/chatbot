@@ -5,15 +5,17 @@ import {
     SendWACatalogModel,
     SendWAImageModel,
     SendWAListModel,
+    SendWAProductsTemplateModel,
     SendWATextModel,
     WAButtons,
     WACatalog,
     WAImage,
     WAList,
     WAResponseModel,
+    WATemplate,
     WAText
 } from "../models/whatsapp-message-type";
-import { QuestionModel } from "../models/dto/scenario-input";
+import { QuestionModel, TemplateAction } from "../models/dto/scenario-input";
 import { Chat, Conversation, sessions } from "../models/chat-model";
 import { ScenarioRespository } from "../repository/scenario-repository";
 import { ClientPointInput } from "../models/dto/client-point-input";
@@ -174,7 +176,11 @@ export const forbiddenUserResponse = async (data: WAText, phone_number_id: strin
     sendWhatsappMessage(phone_number_id, token, textMessage(data));
 };
 
-export const sendWhatsappMessage = async (phone_number_id: string, token: string, data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel) => {
+export const sendWhatsappMessage = async (
+    phone_number_id: string,
+    token: string,
+    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel
+) => {
     const { status } = await axios({
         method: "POST",
         url:
@@ -258,6 +264,33 @@ export const listMessage = (data: WAList): SendWAListModel => {
     };
 };
 
+export const productsTemplateMessage = (data: WATemplate): SendWAProductsTemplateModel => {
+    return {
+        messaging_product: "whatsapp",
+        to: data.recipientPhone,
+        type: "template",
+        template: {
+            name: data.name,
+            language: {
+                code: "fr"
+            },
+            components: [
+                {
+                    type: "button",
+                    sub_type: "mpm",
+                    index: 0,
+                    parameters: [
+                        {
+                            type: "action",
+                            action: data.action
+                        }
+                    ]
+                }
+            ]
+        }
+    };
+};
+
 export const catalogMessage = (data: WACatalog): SendWACatalogModel => {
     return {
         messaging_product: "whatsapp",
@@ -317,8 +350,10 @@ export const askQuestion = (recipientPhone: string, question: QuestionModel) => 
             });
         }
         return listMessage({ recipientPhone, message: question.label, listOfSections });
-    } else if (question.responseType === "catalog") {
-        return catalogMessage({ recipientPhone, message: question.label, catalog_name: question.responses[0].label });
+    } else if (question.responseType === "template") {
+        const name = question.responses[0].label;
+        const action = question.responses[0].template_action;
+        return productsTemplateMessage({ recipientPhone, name, action  });
     }
 };
 
@@ -551,6 +586,47 @@ export const sendTemplateOfProductsCatalog = async (phone_number: string, phone_
         },
         headers: {
             "Authorization": `Bearer EAAizDOZAPPVIBO9sihZC4ZB0j5ft7TfMqhvPdIO38cg5ZAAbdNhczVUgHH2GiwLZCqtZANZBl1jZBrstlGfzZAJXzEUvGFN4UTNNPszoW1rM8OlRngHZBIMKivERzcbZClWPfcg2ZCVPTkhgc3EvPSAJgFFa6V7PvMGYuKO0V6ZCsnQFuEGcyIa1ImUDhT9hxvgSSjFZBJ`,
+            "Content-Type": "application/json"
+        }
+    });
+};
+
+export const sendProductsTemplate = async (
+    phone_number: string,
+    phone_number_id: string,
+    token: string,
+    name: string,
+    action: TemplateAction
+) => {
+    return axios({
+        method: "POST",
+        url: `https://graph.facebook.com/v18.0/${phone_number_id}/messages`,
+        data: {
+            messaging_product: "whatsapp",
+            to: phone_number,
+            type: "template",
+            template: {
+                name,
+                language: {
+                    code: "fr"
+                },
+                components: [
+                    {
+                        type: "button",
+                        sub_type: "mpm",
+                        index: 0,
+                        parameters: [
+                            {
+                                type: "action",
+                                action
+                            }
+                        ]
+                    }
+                ]
+            }
+        },
+        headers: {
+            "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"
         }
     });

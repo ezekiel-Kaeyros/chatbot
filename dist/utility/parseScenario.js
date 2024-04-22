@@ -8,9 +8,14 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeEmptyArray = exports.identifyScenario = exports.removeSpecialCharacter = exports.longLabel = exports.duplicatedLabel = exports.extractLabelsOfInteractiveResponses = exports.parseScenario = void 0;
-const parseScenario = (questions) => __awaiter(void 0, void 0, void 0, function* () {
+const axios_1 = __importDefault(require("axios"));
+const message_queue_1 = require("../message-queue");
+const parseScenario = (questions, phone_number_id = "100609346426084") => __awaiter(void 0, void 0, void 0, function* () {
     for (let question of questions) {
         let badNbr;
         if (!question.responses) {
@@ -36,8 +41,36 @@ const parseScenario = (questions) => __awaiter(void 0, void 0, void 0, function*
                     return true;
             }
         }
-        else if (question.responses.length === 1 && question.responses[0].label.lastIndexOf("_") > 0) {
-            question.responseType = "catalog";
+        else if (question.responses.length === 1 &&
+            question.responses[0].label.lastIndexOf("_") > 0 &&
+            question.responses[0].template_action) {
+            const { status: whatsappAccessStatus, data: whatsappAccessData } = yield (0, message_queue_1.PullWhatappAccessData)({
+                phone_number_id
+            });
+            if (whatsappAccessStatus !== 200) {
+                // throw new Error("Check your phone number ID and try again");
+                return true;
+            }
+            else {
+                const whatsappAccess = whatsappAccessData.data;
+                const { status, data } = yield getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
+                if (status !== 200) {
+                    // throw new Error("Unable to check if your template exists, try again");
+                    return true;
+                }
+                else {
+                    const templatesList = data.data;
+                    if (!(templatesList.find(template => template.name === question.responses[0].label))) {
+                        console.log(`Template ${question.responses[0].label} does not exist`);
+                        // throw new Error(`Template ${question.responses[0].label} does not exist`);
+                        return true;
+                    }
+                    else {
+                        console.log(`Template ${question.responses[0].label} exists`);
+                        question.responseType = "template";
+                    }
+                }
+            }
         }
         else {
             return true;
@@ -122,7 +155,7 @@ const longLabel = (data) => __awaiter(void 0, void 0, void 0, function* () {
 });
 exports.longLabel = longLabel;
 const removeSpecialCharacter = (label) => {
-    const regex = /'|"|@|#|\?|\!|\$|{|}|\[|\]|\(|\)|\\|\*|é|è|ê|ë|É|È|à|â|ä|À|î|ï|ù|û|ü|~|`|&|µ|\s+|\./g;
+    const regex = /'|"|@|#|-|\?|\!|\$|{|}|\[|\]|\(|\)|\\|\*|é|è|ê|ë|É|È|à|â|ä|À|î|ï|ù|û|ü|~|`|&|µ|\s+|\./g;
     label = label.toLowerCase().replace(regex, "");
     if (label.length > 10)
         return label.slice(0, 5) + label.slice(-5);
@@ -166,5 +199,34 @@ const cleanData = (data) => __awaiter(void 0, void 0, void 0, function* () {
             data.responses.forEach(r => cleanData(r));
         }
     }
+});
+const isCatalogName = (catalogName) => __awaiter(void 0, void 0, void 0, function* () {
+    const { status: whatsappAccessStatus, data: whatsappAccessData } = yield (0, message_queue_1.PullWhatappAccessData)({
+        phone_number_id: "100609346426084"
+    });
+    if (whatsappAccessStatus !== 200) {
+    }
+    else {
+    }
+});
+const getCatalogList = (companyId, token) => __awaiter(void 0, void 0, void 0, function* () {
+    return (0, axios_1.default)({
+        method: "GET",
+        url: `https://graph.facebook.com/v18.0/${companyId}/owned_product_catalogs`,
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+});
+const getTemplatesList = (wabaId, token) => __awaiter(void 0, void 0, void 0, function* () {
+    return (0, axios_1.default)({
+        method: "GET",
+        url: `https://graph.facebook.com/v19.0/${wabaId}/message_templates?fields=name,status`,
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
 });
 //# sourceMappingURL=parseScenario.js.map

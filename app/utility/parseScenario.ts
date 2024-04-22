@@ -2,11 +2,10 @@ import axios from "axios";
 import { PullWhatappAccessData } from "../message-queue";
 import { FilterLabels, QuestionModel, ResponseModel } from "../models/dto/scenario-input";
 import { WhatsappAccessModel } from "../models/whatsapp-access-model";
-import { CatalogModel } from "../models/catalog-model";
+import { TemplateResponseModel } from "../models/template-response-model";
 
-export const parseScenario = async (questions: QuestionModel[], companyId: string = "679854450187854"): Promise<boolean> => {
+export const parseScenario = async (questions: QuestionModel[], phone_number_id: string = "100609346426084"): Promise<boolean> => {
     for (let question of questions) {
-
         let badNbr;
 
         if (! question.responses) {
@@ -29,25 +28,33 @@ export const parseScenario = async (questions: QuestionModel[], companyId: strin
 
                 if (badNbr) return true;
             }
-        } else if (question.responses.length === 1 && question.responses[0].label.lastIndexOf("_") > 0) {
+        } else if (
+            question.responses.length === 1 &&
+            question.responses[0].label.lastIndexOf("_") > 0 &&
+            question.responses[0].template_action
+        ) {
             const { status: whatsappAccessStatus, data: whatsappAccessData } = await PullWhatappAccessData({
-                phone_number_id: "100609346426084"
+                phone_number_id
             });
             if (whatsappAccessStatus !== 200) {
-                return false;
+                // throw new Error("Check your phone number ID and try again");
+                return true;
             } else {
                 const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
-                const { status, data } = await getCatalogList(companyId, whatsappAccess.token);
+                const { status, data } = await getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
+                
                 if (status !== 200) {
-                    return false;
+                    // throw new Error("Unable to check if your template exists, try again");
+                    return true;
                 } else {
-                    const catalogList = data.data as CatalogModel[];
-                    if (!(catalogList.find(catalog => catalog.name === question.responses[0].label))) {
-                        console.log(`Catalog ${question.responses[0].label} does not exist`);
-                        return false;
+                    const templatesList = data.data as TemplateResponseModel[];
+                    if (!(templatesList.find(template => template.name === question.responses[0].label))) {
+                        console.log(`Template ${question.responses[0].label} does not exist`);
+                        // throw new Error(`Template ${question.responses[0].label} does not exist`);
+                        return true;
                     } else {
-                        console.log(`Catalog ${question.responses[0].label} exists`);
-                        question.responseType = "catalog";
+                        console.log(`Template ${question.responses[0].label} exists`);
+                        question.responseType = "template";
                     }
                 }
             }
@@ -130,7 +137,7 @@ export const longLabel = async (data: QuestionModel[] | ResponseModel[]): Promis
 };
 
 export const removeSpecialCharacter = (label: string) => {
-    const regex = /'|"|@|#|\?|\!|\$|{|}|\[|\]|\(|\)|\\|\*|é|è|ê|ë|É|È|à|â|ä|À|î|ï|ù|û|ü|~|`|&|µ|\s+|\./g;
+    const regex = /'|"|@|#|-|\?|\!|\$|{|}|\[|\]|\(|\)|\\|\*|é|è|ê|ë|É|È|à|â|ä|À|î|ï|ù|û|ü|~|`|&|µ|\s+|\./g;
     label = label.toLowerCase().replace(regex, "");
     if (label.length > 10) return label.slice(0, 5) + label.slice(-5);
     else return label;
@@ -186,6 +193,17 @@ const getCatalogList = async (companyId: string, token: string) => {
     return axios({
         method: "GET",
         url: `https://graph.facebook.com/v18.0/${companyId}/owned_product_catalogs`,
+        headers: {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json"
+        }
+    });
+};
+
+const getTemplatesList = async (wabaId: string, token: string) => {
+    return axios({
+        method: "GET",
+        url: `https://graph.facebook.com/v19.0/${wabaId}/message_templates?fields=name,status`,
         headers: {
             "Authorization": `Bearer ${token}`,
             "Content-Type": "application/json"

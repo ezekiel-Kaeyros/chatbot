@@ -1,3 +1,5 @@
+import { TemplateAction } from "./dto/scenario-input";
+
 export type ButtonContent = {
     id: string;
     title: string;
@@ -24,6 +26,12 @@ export type WAList = {
 export type WAImage = {
     recipientPhone: string;
     link: string;
+};
+
+export type WATemplate = {
+    recipientPhone: string;
+    name: string;
+    action: TemplateAction;
 };
 
 export type WACatalog = {
@@ -88,6 +96,31 @@ export type SendWAImageModel = {
     type: "image",
     image: {
         link : string
+    }
+};
+
+export type SendWAProductsTemplateModel = {
+    messaging_product: "whatsapp",
+    to: string,
+    type: "template",
+    template: {
+        name: string,
+        language: {
+            code: "fr"
+        },
+        components: [
+            {
+                type: "button",
+                sub_type: "mpm",
+                index: 0,
+                parameters: [
+                    {
+                        type: "action",
+                        action: TemplateAction
+                    }
+                ]
+            }
+        ]
     }
 };
 

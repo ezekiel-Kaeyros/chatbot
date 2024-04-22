@@ -18,6 +18,7 @@ router.put('/edit/:id', scenarioService.editScenario);
 router.get('/getall', scenarioService.getScenarios);
 router.get('/getone/:id', scenarioService.getScenario);
 router.post('/active', scenarioService.activeScenario);
+router.get('/scenarios/:phone_number_id', scenarioService.getCompanyScenarios);
 // CHATBOT
 router.get('/webhook', companyChatsService.getMessage);
 router.post('/webhook', companyChatsService.sendMessage);

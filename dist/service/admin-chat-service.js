@@ -42,15 +42,15 @@ let AdminChatsService = class AdminChatsService {
             }
         });
     }
-    getAllCompaniesChats(event) {
+    getAllCompaniesChats(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
                 const data = yield companyChatsRepository.getAllCompaniesChats();
-                return (0, response_1.SuccessResponse)(data);
+                return res.status(200).send(data);
             }
             catch (error) {
                 console.log(error);
-                return (0, response_1.ErrorResponse)(500, error);
+                return res.status(500).send(error);
             }
         });
     }
@@ -71,22 +71,23 @@ let AdminChatsService = class AdminChatsService {
             }
         });
     }
-    getChatsConversation(event) {
+    getChatsConversation(req, res) {
         var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const phone_number_id = (_a = event.pathParameters) === null || _a === void 0 ? void 0 : _a.phone_number_id;
+                const phone_number_id = (_a = req.params) === null || _a === void 0 ? void 0 : _a.phone_number_id;
                 if (!phone_number_id)
-                    return (0, response_1.ErrorResponse)(403, "please provide company phone number id");
-                const phone_number = (_b = event.pathParameters) === null || _b === void 0 ? void 0 : _b.phone_number;
+                    return res.status(403).send("please provide company phone number id");
+                const phone_number = (_b = req.params) === null || _b === void 0 ? void 0 : _b.phone_number;
                 if (!phone_number)
-                    return (0, response_1.ErrorResponse)(403, "please provide user phone number");
+                    return res.status(403).send("please provide user phone number");
                 const companyChats = yield companyChatsRepository.getChatsConversation(phone_number_id, phone_number);
-                return (0, response_1.SuccessResponse)(companyChats);
+                console.log(companyChats);
+                return res.status(200).send(companyChats);
             }
             catch (error) {
                 console.log(error);
-                return (0, response_1.ErrorResponse)(500, error);
+                return res.status(200).send(error);
             }
         });
     }

@@ -1,16 +1,31 @@
 import mongoose from "mongoose";
 import { FilterLabels } from "./dto/scenario-input";
 
+type ProductItem = {
+    product_retailer_id: string;
+};
+
+type Section = {
+    title: string;
+    product_items: ProductItem[];
+};
+
+type TemplateAction = {
+    thumbnail_product_retailer_id: string;
+    sections: Section[];
+};
+
 type ResponseModel = {
     label: string;
     questions?: QuestionModel[];
     id?: string;
+    template_action?: TemplateAction;
 };
 
 type QuestionModel = {
     label: string;
     responses?: ResponseModel[];
-    responseType?: "text" | "button" | "list" | "catalog";
+    responseType?: "text" | "button" | "list" | "catalog" | "template";
     id?: string;
 };
 

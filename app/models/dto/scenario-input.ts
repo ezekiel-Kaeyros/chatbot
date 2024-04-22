@@ -1,15 +1,30 @@
 import { Length } from "class-validator";
 
+type ProductItem = {
+    product_retailer_id: string;
+};
+
+type Section = {
+    title: string;
+    product_items: ProductItem[];
+};
+
+export type TemplateAction = {
+    thumbnail_product_retailer_id: string;
+    sections: Section[];
+};
+
 export type ResponseModel = {
     label: string;
     questions?: QuestionModel[];
     id?: string;
+    template_action?: TemplateAction;
 };
 
 export type QuestionModel = {
     label: string;
     responses?: ResponseModel[];
-    responseType?: "text" | "button" | "list" | "catalog";
+    responseType?: "text" | "button" | "list" | "catalog" | "template";
     id?: string;
 };
 

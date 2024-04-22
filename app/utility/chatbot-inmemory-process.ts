@@ -1,4 +1,4 @@
-import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
+import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
 import Bull, { Job } from "bull";
 import {
     askQuestion,
@@ -39,7 +39,7 @@ export const processChatQueue = async (job: Job) => {
     try {
         const body = job.data as any;
         
-        let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel;
+        let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel;
         if (await getWhatsappResponse(body)) {
             const waResponse = await getWhatsappResponse(body) as WAResponseModel;
             waResponse.phone_number_id

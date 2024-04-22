@@ -13,7 +13,7 @@ exports.ScenarioRespository = void 0;
 const scenario_model_1 = require("../models/scenario-model");
 class ScenarioRespository {
     constructor() { }
-    createScenario({ title, phone_number_id, company, description, interactive_labels, times, keywords }) {
+    createScenario({ title, phone_number_id, company, description, interactive_labels, times, keywords, company_id }) {
         return __awaiter(this, void 0, void 0, function* () {
             console.log(interactive_labels);
             return scenario_model_1.scenarios.create({
@@ -24,7 +24,8 @@ class ScenarioRespository {
                 active: false,
                 interactive_labels,
                 times,
-                keywords
+                keywords,
+                company_id
             });
         });
     }
@@ -44,6 +45,11 @@ class ScenarioRespository {
     getScenarioByPhoneNumberId(phone_number_id) {
         return __awaiter(this, void 0, void 0, function* () {
             return scenario_model_1.scenarios.findOne({ phone_number_id, active: true });
+        });
+    }
+    getCompanyScenarios(phone_number_id) {
+        return __awaiter(this, void 0, void 0, function* () {
+            return scenario_model_1.scenarios.find({ phone_number_id });
         });
     }
     updateScenario({ _id, title, phone_number_id, company, description }) {

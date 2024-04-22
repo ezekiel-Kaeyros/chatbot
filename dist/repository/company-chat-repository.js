@@ -23,7 +23,8 @@ class CompanyChatRespository {
                 phone_number_id,
                 conversations: [{
                         phone_number,
-                        chat_messages: [chat_message]
+                        chat_messages: [chat_message],
+                        unread_msg: 1
                     }]
             };
             return company_chats_model_1.companiesChats.create(companyChats);
@@ -51,6 +52,19 @@ class CompanyChatRespository {
         return __awaiter(this, void 0, void 0, function* () {
             const companyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
             const chatsConversation = companyChats.conversations.find(conversation => conversation.phone_number === phone_number);
+            chatsConversation.chat_messages.map(chatMessage => {
+                if (!chatMessage.is_read)
+                    chatMessage.is_read = true;
+                return chatMessage;
+            });
+            chatsConversation.unread_msg = 0;
+            companyChats.conversations.map(conversation => {
+                if (conversation.phone_number === phone_number) {
+                    conversation = chatsConversation;
+                }
+            });
+            companyChats.markModified('conversations');
+            companyChats.save();
             return chatsConversation;
         });
     }
@@ -69,7 +83,8 @@ class CompanyChatRespository {
             const existingCompanyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
             existingCompanyChats.conversations.push({
                 phone_number,
-                chat_messages: [chat_message]
+                chat_messages: [chat_message],
+                unread_msg: 1
             });
             existingCompanyChats.markModified('conversations');
             return existingCompanyChats.save();
@@ -81,12 +96,13 @@ class CompanyChatRespository {
             existingCompanyChats.conversations.map(conversation => {
                 if (conversation.phone_number === phone_number) {
                     conversation.chat_messages = [...conversation.chat_messages, chat_message];
+                    conversation.unread_msg += 1;
                 }
                 return conversation;
             });
             // console.debug("EXISTING CONVERSATION: ", existingCompanyChats._id);
             existingCompanyChats.markModified('conversations');
-            return existingCompanyChats.updateOne();
+            return existingCompanyChats.save();
         });
     }
     addChatMessage(phone_number_id, phone_number, chat_message) {
@@ -96,6 +112,7 @@ class CompanyChatRespository {
             //     phone_number,
             //     chat_message
             // });
+            chat_message.is_read = false;
             const companyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
             if (companyChats) {
                 if (companyChats.conversations.some(conversation => conversation.phone_number === phone_number)) {

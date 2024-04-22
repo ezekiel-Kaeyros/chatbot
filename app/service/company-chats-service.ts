@@ -4,7 +4,7 @@ import { ErrorResponse, SuccessResponse } from "../utility/response";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { Request, Response } from 'express';
 import { sendChat } from "../utility/chatbot-inmemory-process";
-import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
+import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
 import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendTemplateOfProductsCatalog, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
 import { sessions } from "../models/chat-model";
 import { ClientPointModel } from "../models/client-point-model";
@@ -55,7 +55,7 @@ export class CompanyChatsService {
             // await sendChat(body);
             // return res.status(200).send();
 
-            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel;
+            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel;
             if (await getWhatsappResponse(body)) {
                 const waResponse = await getWhatsappResponse(body) as WAResponseModel;
                 waResponse.phone_number_id
@@ -115,54 +115,6 @@ export class CompanyChatsService {
                     }
     
                 } else {
-                    if (waResponse.type === "order") {
-                        console.log("___________________PRODUCTS ORDER______________________");
-                        console.dir(waResponse.data, { depth: null });
-
-                        const products = waResponse.data.order.product_items as Array<{
-                            product_retailer_id: string,
-                            quantity: string,
-                            item_price: string,
-                            currency: string
-                        }>;
-
-                        let order = ``;
-                        let total = 0;
-                        for (let product of products) {
-                            order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                            total += (+product.quantity) * (+product.item_price);
-                        }
-                        order += `Total: *€${total}*\n\n`;
-
-                        data = await chatToString(
-                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats,
-                            waResponse.phone_number,
-                            waResponse.name,
-                            waResponse.phone_number_id,
-                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
-                        ) as SendWATextModel;
-                        data.text.body += `\n\nVotre command\n${order}`;
-
-                        sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                        // Save chat
-                        await companyChatsRepository.addChatMessage(
-                            waResponse.phone_number_id,
-                            waResponse.phone_number,
-                            {
-                                text: data.text.body,
-                                is_bot: true,
-                                is_admin: false,
-                                date: new Date()
-                            });
-
-                        await sendWhatsappMessage(
-                            waResponse.phone_number_id,
-                            token,
-                            data
-                        );
-                        return res.status(200).send({});
-                    }
-
                     if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
                         const scenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
                         if (scenario.keywords && scenario.keywords.length !== 0) {
@@ -339,6 +291,7 @@ export class CompanyChatsService {
                     } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "button") {
                         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
                             // SEND TEMPLATE OF PRODUCTS CATALOG
+                            /*
                             if (waResponse.phone_number_id === "100609346426084") {
                                 const id = waResponse.data.interactive.button_reply.id;
                                 const label = waResponse.data.interactive.button_reply.title;
@@ -362,7 +315,8 @@ export class CompanyChatsService {
                                     "token"
                                 );
                                 return res.status(200).send({});
-                            } // END TEMPLATE OF PRODUCTS CATALOG
+                            }*/
+                            // END TEMPLATE OF PRODUCTS CATALOG
 
                             const id = waResponse.data.interactive.button_reply.id;
                             const label = waResponse.data.interactive.button_reply.title;
@@ -478,9 +432,47 @@ export class CompanyChatsService {
                                 sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion
                             );
                         }
-                    } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "catalog") {
-                        if (waResponse.type === "interactive" && waResponse.data.interactive.type === "catalog_message") {
+                    } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "template") {
+                        if (waResponse.type === "order") {
+                            console.dir(waResponse.data, { depth: null });
+    
+                            const products = waResponse.data.order.product_items as Array<{
+                                product_retailer_id: string,
+                                quantity: string,
+                                item_price: string,
+                                currency: string
+                            }>;
+    
+                            let order = ``;
+                            let total = 0;
+                            for (let product of products) {
+                                order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                total += (+product.quantity) * (+product.item_price);
+                            }
+                            order += `Total: *€${total}*\n\n`;
 
+                            const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
+                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = `\n\n*Command*\n${order}`;
+
+                            data = await chatToString(
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats,
+                                waResponse.phone_number,
+                                waResponse.name,
+                                waResponse.phone_number_id,
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                            );
+                            sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+
+                            // Save chat
+                            await companyChatsRepository.addChatMessage(
+                                waResponse.phone_number_id,
+                                waResponse.phone_number,
+                                {
+                                    text: `\n\n*Command*\n${order}`,
+                                    is_bot: true,
+                                    is_admin: false,
+                                    date: new Date()
+                                });
                         } else {
                             data = askQuestion(
                                 waResponse.phone_number,

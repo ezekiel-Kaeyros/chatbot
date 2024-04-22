@@ -9,25 +9,17 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ScenarioInput = void 0;
+exports.UpdateBroadcastStatusInput = void 0;
 const class_validator_1 = require("class-validator");
-class ScenarioInput {
-    constructor() {
-        this.times = -1;
-        this.company_id = "679854450187854";
-    }
+class UpdateBroadcastStatusInput {
 }
-exports.ScenarioInput = ScenarioInput;
+exports.UpdateBroadcastStatusInput = UpdateBroadcastStatusInput;
 __decorate([
-    (0, class_validator_1.Length)(3, 128),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], ScenarioInput.prototype, "title", void 0);
+], UpdateBroadcastStatusInput.prototype, "response_id", void 0);
 __decorate([
-    (0, class_validator_1.Length)(15),
+    (0, class_validator_1.IsNotEmpty)(),
     __metadata("design:type", String)
-], ScenarioInput.prototype, "phone_number_id", void 0);
-__decorate([
-    (0, class_validator_1.Length)(3),
-    __metadata("design:type", String)
-], ScenarioInput.prototype, "company", void 0);
-//# sourceMappingURL=scenario-input.js.map
+], UpdateBroadcastStatusInput.prototype, "status", void 0);
+//# sourceMappingURL=update-broadcast-status-input.js.map
