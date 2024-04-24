@@ -106,22 +106,30 @@ export class CompanyChatRespository {
         return existingCompanyChats.save();
     }
 
-    async addChatMessage(phone_number_id: string, phone_number: string, chat_message: ChatMessageModel) {
+    async addChatMessage(phone_number_id: string, phone_number: string, chat_message: ChatMessageModel, io: any) {
         // await this.socketPostMessage({
         //     phone_number_id,
         //     phone_number,
         //     chat_message
         // });
-        chat_message.is_read = false;
-        const companyChats = await companiesChats.findOne({phone_number_id}) as CompanyChatsDoc;
-        if (companyChats) {
-            if (companyChats.conversations.some(conversation => conversation.phone_number === phone_number)) {
-                return this.updateConversation(phone_number_id, phone_number, chat_message);
+        try {
+            chat_message.is_read = false;
+            let res: any
+            const companyChats = await companiesChats.findOne({phone_number_id}) as CompanyChatsDoc;
+            if (companyChats) {
+                if (companyChats.conversations.some(conversation => conversation.phone_number === phone_number)) {
+                    res = this.updateConversation(phone_number_id, phone_number, chat_message);
+                } else {
+                    res = this.createConversation(phone_number_id, phone_number, chat_message);
+                }
             } else {
-                return this.createConversation(phone_number_id, phone_number, chat_message);
+                res = this.createCompanyChats(phone_number_id, phone_number, chat_message);
             }
-        } else {
-            return this.createCompanyChats(phone_number_id, phone_number, chat_message);
+            io.emit(`message-${phone_number_id}-${phone_number}`, {data: res});
+            return res;
+            
+        } catch (error) {
+            throw new Error(error);
         }
     }
 

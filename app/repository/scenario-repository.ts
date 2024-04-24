@@ -12,9 +12,23 @@ export class ScenarioRespository {
         interactive_labels,
         times,
         keywords,
-        company_id
+        company_id,
+        report_into,
+        last_message
     }: ScenarioInput) {
-        console.log(interactive_labels);
+        const companyScenariosList = await this.getCompanyScenarios(phone_number_id);
+        for (let scenario of companyScenariosList) {
+            if (title.toLocaleLowerCase().trim() === scenario.title.toLocaleLowerCase().trim())
+                throw new Error(`${title} is already use as scenario title`);
+            if (keywords) {
+                for (let word of keywords) {
+                    if (scenario?.keywords && scenario?.keywords.includes(word))
+                        throw new Error(`${word} is already use as scenario keyword`);
+                }
+            }
+        }
+        console.log(report_into,
+            last_message);
         return scenarios.create({
             title,
             phone_number_id,
@@ -24,7 +38,9 @@ export class ScenarioRespository {
             interactive_labels,
             times,
             keywords,
-            company_id
+            company_id,
+            report_into,
+            last_message
         });
     }
 

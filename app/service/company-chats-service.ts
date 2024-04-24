@@ -4,7 +4,7 @@ import { ErrorResponse, SuccessResponse } from "../utility/response";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { Request, Response } from 'express';
 import { sendChat } from "../utility/chatbot-inmemory-process";
-import { SendWAButtonModel, SendWACatalogModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
+import { SendWAButtonModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
 import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendTemplateOfProductsCatalog, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
 import { sessions } from "../models/chat-model";
 import { ClientPointModel } from "../models/client-point-model";
@@ -32,7 +32,7 @@ export class CompanyChatsService {
             const verify_token = queryParams["hub.verify_token"] as string;
             const challenge = queryParams["hub.challenge"];
 
-            const credentials = await credentialsRepository.getByVerifyToken(verify_token)
+            const credentials = await credentialsRepository.getByVerifyToken(verify_token);
 
             if (mode && verify_token) {
                 if (mode === "subscribe" && verify_token === credentials.verify_token) {
@@ -49,20 +49,19 @@ export class CompanyChatsService {
         }
     }
 
-    async sendMessage(req: Request, res: Response) {
+    async sendMessage(req: any, res: Response) {
         try {
-            const body = req.body as any;
+            const body = {...req.body, io: req.io} as any;
             // await sendChat(body);
             // return res.status(200).send();
 
-            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel;
+            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel;
             if (await getWhatsappResponse(body)) {
                 const waResponse = await getWhatsappResponse(body) as WAResponseModel;
-                waResponse.phone_number_id
+
                 //const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
                 const token = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).token;
                 //const token = credentials.token;
-                // await markMessageAsRead(waResponse.id, token);
                 if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
     
                     const programName = getPrgramName(waResponse.data.text.body);
@@ -115,8 +114,10 @@ export class CompanyChatsService {
                     }
     
                 } else {
+                    const last_message = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).last_message;
                     if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
                         const scenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
+                        /*
                         if (scenario.keywords && scenario.keywords.length !== 0) {
                             let inputText = '';
                             if (waResponse.type === "text") inputText = waResponse.data.text.body.trim();
@@ -131,7 +132,7 @@ export class CompanyChatsService {
                                 }, waResponse.phone_number_id, token);
                                 return res.status(200).send({});
                             }
-                        }
+                        }*/
                         if (waResponse.type === "text" || waResponse.type === "button") {
                             if (waResponse.type === "button") {
                                 console.dir(waResponse.data.button, { depth: null });
@@ -163,7 +164,7 @@ export class CompanyChatsService {
                                             is_bot: false,
                                             is_admin: false,
                                             date: new Date()
-                                        });
+                                        }, req.io);
                                 }
                             } else {
                                 if (waResponse.data.text.body === "Fête des mères, appuyez sur envoyer") {
@@ -185,7 +186,7 @@ export class CompanyChatsService {
                                             is_bot: false,
                                             is_admin: false,
                                             date: new Date()
-                                        });
+                                        }, req.io);
                                 }
                             }
                                 
@@ -206,7 +207,7 @@ export class CompanyChatsService {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io);
     
                             data = askQuestion(
                                 waResponse.phone_number,
@@ -225,7 +226,7 @@ export class CompanyChatsService {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io);
     
                             data = askQuestion(
                                 waResponse.phone_number,
@@ -250,7 +251,8 @@ export class CompanyChatsService {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io);
+
                             const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
                                 quest => quest.label === sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label
                             );
@@ -268,7 +270,8 @@ export class CompanyChatsService {
                                     waResponse.phone_number,
                                     waResponse.name,
                                     waResponse.phone_number_id,
-                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
                                 sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 // Save chat
@@ -280,7 +283,7 @@ export class CompanyChatsService {
                                         is_bot: true,
                                         is_admin: false,
                                         date: new Date()
-                                    });
+                                    }, req.io);
                             }
                         } else {
                             data = askQuestion(
@@ -290,33 +293,6 @@ export class CompanyChatsService {
                         }
                     } else if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "button") {
                         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
-                            // SEND TEMPLATE OF PRODUCTS CATALOG
-                            /*
-                            if (waResponse.phone_number_id === "100609346426084") {
-                                const id = waResponse.data.interactive.button_reply.id;
-                                const label = waResponse.data.interactive.button_reply.title;
-                                const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = label;
-        
-                                // Save chat
-                                await companyChatsRepository.addChatMessage(
-                                    waResponse.phone_number_id,
-                                    waResponse.phone_number,
-                                    {
-                                        text: label,
-                                        is_bot: false,
-                                        is_admin: false,
-                                        date: new Date()
-                                    });
-
-                                await sendTemplateOfProductsCatalog(
-                                    waResponse.phone_number,
-                                    waResponse.phone_number_id,
-                                    "token"
-                                );
-                                return res.status(200).send({});
-                            }*/
-                            // END TEMPLATE OF PRODUCTS CATALOG
 
                             const id = waResponse.data.interactive.button_reply.id;
                             const label = waResponse.data.interactive.button_reply.title;
@@ -332,7 +308,8 @@ export class CompanyChatsService {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io
+                            );
         
                             const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                             const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -354,7 +331,8 @@ export class CompanyChatsService {
                                     waResponse.phone_number,
                                     waResponse.name,
                                     waResponse.phone_number_id,
-                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
                                 sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 // Save chat
@@ -366,7 +344,7 @@ export class CompanyChatsService {
                                         is_bot: true,
                                         is_admin: false,
                                         date: new Date()
-                                    });
+                                    }, req.io);
                             }
                         } else {
                             data = askQuestion(
@@ -390,7 +368,7 @@ export class CompanyChatsService {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io);
         
                             const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                             const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -412,7 +390,8 @@ export class CompanyChatsService {
                                     waResponse.phone_number,
                                     waResponse.name,
                                     waResponse.phone_number_id,
-                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
+                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
                                 sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 // Save chat
@@ -424,7 +403,7 @@ export class CompanyChatsService {
                                         is_bot: true,
                                         is_admin: false,
                                         date: new Date()
-                                    });
+                                    }, req.io);
                             }
                         } else {
                             data = askQuestion(
@@ -459,7 +438,8 @@ export class CompanyChatsService {
                                 waResponse.phone_number,
                                 waResponse.name,
                                 waResponse.phone_number_id,
-                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                             );
                             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
 
@@ -472,7 +452,7 @@ export class CompanyChatsService {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, req.io);
                         } else {
                             data = askQuestion(
                                 waResponse.phone_number,
@@ -498,12 +478,13 @@ export class CompanyChatsService {
                                 is_bot: true,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, req.io);
                     } else {
-                        if (waResponse.phone_number_id === "299462959914851") {
+                        if (last_message) {
                             await forbiddenUserResponse({
                                 recipientPhone: waResponse.phone_number,
-                                message: `Participez à la fêtes des mères et recevez 1000 frs de crédit de communication en cliquant sur ce lien.\nhttps://wa.me/message/UJBNPI6GLOCTN1`
+                                message: last_message
+                                // message: `Participez à la fêtes des mères et recevez 1000 frs de crédit de communication en cliquant sur ce lien.\nhttps://wa.me/message/UJBNPI6GLOCTN1`
                             }, waResponse.phone_number_id, token);
                         }
                     }

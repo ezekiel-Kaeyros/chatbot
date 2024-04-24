@@ -37,21 +37,18 @@ export const parseScenario = async (questions: QuestionModel[], phone_number_id:
                 phone_number_id
             });
             if (whatsappAccessStatus !== 200) {
-                // throw new Error("Check your phone number ID and try again");
-                return true;
+                throw new Error("Check your phone number ID and try again");
             } else {
                 const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
                 const { status, data } = await getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
                 
                 if (status !== 200) {
-                    // throw new Error("Unable to check if your template exists, try again");
-                    return true;
+                    throw new Error("Unable to check if your template exists, try again");
                 } else {
                     const templatesList = data.data as TemplateResponseModel[];
                     if (!(templatesList.find(template => template.name === question.responses[0].label))) {
                         console.log(`Template ${question.responses[0].label} does not exist`);
-                        // throw new Error(`Template ${question.responses[0].label} does not exist`);
-                        return true;
+                        throw new Error(`Template ${question.responses[0].label} does not exist`);
                     } else {
                         console.log(`Template ${question.responses[0].label} exists`);
                         question.responseType = "template";

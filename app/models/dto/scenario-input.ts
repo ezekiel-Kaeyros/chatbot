@@ -45,6 +45,8 @@ export class ScenarioInput {
     times?: number = -1;
     keywords?: string[];
     company_id?: string = "679854450187854";
+    report_into?: string;
+    last_message?: string;
 }
 
 export type FilterLabels = {

@@ -38,8 +38,8 @@ export const sendChat = async (chat: any) => {
 export const processChatQueue = async (job: Job) => {
     try {
         const body = job.data as any;
-        
-        let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel;
+        const io = body.io;
+        let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel;
         if (await getWhatsappResponse(body)) {
             const waResponse = await getWhatsappResponse(body) as WAResponseModel;
             waResponse.phone_number_id
@@ -114,7 +114,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, io);
 
                             if (waResponse.data.button.text.trim() === "ça m'intéresse") {
                                 console.log("ça m'intéresse");
@@ -150,7 +150,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, io);
                         }
                             
                         data = askQuestion(
@@ -170,7 +170,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, io);
 
                         data = askQuestion(
                             waResponse.phone_number,
@@ -189,7 +189,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, io);
 
                         data = askQuestion(
                             waResponse.phone_number,
@@ -214,7 +214,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, io);
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
                             quest => quest.label === sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label
                         );
@@ -238,7 +238,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, io);
                         }
                     } else {
                         data = askQuestion(
@@ -262,7 +262,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, io);
     
                         const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -290,7 +290,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, io);
                         }
                     } else {
                         data = askQuestion(
@@ -314,7 +314,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            });
+                            }, io);
     
                         const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -342,7 +342,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                });
+                                }, io);
                         }
                     } else {
                         data = askQuestion(
@@ -369,7 +369,7 @@ export const processChatQueue = async (job: Job) => {
                             is_bot: true,
                             is_admin: false,
                             date: new Date()
-                        });
+                        }, io);
                 }
 
                 return 200;

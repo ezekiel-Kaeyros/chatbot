@@ -121,7 +121,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
             };
 
             const token = (await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
-            const status = await markMessageAsRead(waResponse.id, waResponse.phone_number_id, token);
+            await markMessageAsRead(waResponse.id, waResponse.phone_number_id, token);
             
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                 //console.log("LOYATY PROGRAM: ", waResponse.data.text.body);
@@ -132,34 +132,35 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     if (!sessions.has(waResponse.phone_number)) sessions.delete(waResponse.phone_number);
                 }
 
-                const activeScenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
-                if (activeScenario.times !== undefined && activeScenario.times > 0) {
-                    if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, activeScenario.users, activeScenario.times)) {
+                //const activeScenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
+                const conversation = await getSuitableScenario(waResponse);
+                if (conversation.times !== undefined && conversation.times > 0) {
+                    if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
                         //const token = (await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
                         await forbiddenUserResponse({
                             recipientPhone: waResponse.phone_number,
-                            message: "L'envoie de votre crédit est en cours de traitement\nVous n'êtes plus autorisé à participer."
+                            message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
                         }, waResponse.phone_number_id, token);
                         return false;
                     } else {
                         if (!sessions.has(waResponse.phone_number)) {
-                            const conversation = await newConversation(waResponse.phone_number_id);
+                            // const conversation = await newConversation(waResponse.phone_number_id);
                             const companiesChats = new Map<string, Conversation>();
                             companiesChats.set(waResponse.phone_number_id, conversation);
                             sessions.set(waResponse.phone_number, companiesChats);
                         } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                            const conversation = await newConversation(waResponse.phone_number_id);
+                            // const conversation = await newConversation(waResponse.phone_number_id);
                             sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
                         }
                     }
                 } else {
                     if (!sessions.has(waResponse.phone_number)) {
-                        const conversation = await newConversation(waResponse.phone_number_id);
+                        // const conversation = await newConversation(waResponse.phone_number_id);
                         const companiesChats = new Map<string, Conversation>();
                         companiesChats.set(waResponse.phone_number_id, conversation);
                         sessions.set(waResponse.phone_number, companiesChats);
                     } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                        const conversation = await newConversation(waResponse.phone_number_id);
+                        // const conversation = await newConversation(waResponse.phone_number_id);
                         sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
                     }
                 }
@@ -172,6 +173,52 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
     return false;
 };
 
+export const getSuitableScenario = async (waResponse: WAResponseModel) => {
+    let message = '';
+    if (waResponse.type === "text") {
+        message = waResponse.data.text.body.trim();
+    } else if (waResponse.type === "button") {
+        message = waResponse.data.button.text.trim();
+    } else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+        message = waResponse.data.interactive.button_reply.title;
+    } else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
+        message = waResponse.data.interactive.list_reply.title;
+    }
+
+    const companyScenarios = await scenarioRepository.getCompanyScenarios(waResponse.phone_number_id);
+    const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+    const chats: Chat[] = [];
+
+    for (let scen of companyScenarios) {
+        if (scen?.keywords && scen?.keywords.includes(message)) {
+            return {
+                scenario: scen.description,
+                chats: chats,
+                timeout: new Date(),
+                token: companyCredentials.token,
+                company: scen.company,
+                report_into: scen?.report_into,
+                last_message: scen?.last_message,
+                times: scen.times,
+                users: scen?.users
+            };
+        }
+    }
+
+    const activeScenario = companyScenarios.find(scen => scen.active);
+    return {
+        scenario: activeScenario.description,
+        chats: chats,
+        timeout: new Date(),
+        token: companyCredentials.token,
+        company: activeScenario.company,
+        report_into: activeScenario?.report_into,
+        last_message: activeScenario?.last_message,
+        times: activeScenario.times,
+        users: activeScenario?.users
+    };
+};
+
 export const forbiddenUserResponse = async (data: WAText, phone_number_id: string, token: string) => {
     sendWhatsappMessage(phone_number_id, token, textMessage(data));
 };
@@ -179,7 +226,7 @@ export const forbiddenUserResponse = async (data: WAText, phone_number_id: strin
 export const sendWhatsappMessage = async (
     phone_number_id: string,
     token: string,
-    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWACatalogModel|SendWAProductsTemplateModel
+    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel
 ) => {
     const { status } = await axios({
         method: "POST",
@@ -318,15 +365,6 @@ export const catalogMessage = (data: WACatalog): SendWACatalogModel => {
     };
 };
 
-export const getQuestionResponse = async (messageResponse: any, questions: QuestionModel[]) => {
-    const question = questions[0];
-    if (messageResponse.type === question.responseType) {
-        if (messageResponse.type === "text") {
-            if (questions.length > 1) {}
-        }
-    }
-};
-
 export const askQuestion = (recipientPhone: string, question: QuestionModel) => {
     if (question.responseType === "text") {
         return textMessage({ recipientPhone, message: question.label });
@@ -366,25 +404,33 @@ export const saveQuestion = (question: QuestionModel) => {
     }
 };
 
-export const chatToString = async (chats: Chat[], recipientPhone: string, username: string, phoneNumberId: string = '', company: string = ''): Promise<SendWATextModel> => {
+export const chatToString = async (
+    chats: Chat[],
+    recipientPhone: string,
+    username: string,
+    phoneNumberId: string = '',
+    company: string = '',
+    report_into = ''
+): Promise<SendWATextModel> => {
     let text = `Merci *${username}* pour cet échange, veuillez trouver ci-dessous le résumé de nos échanges.\n\n`;
     
     // Fete des meres
-    if (phoneNumberId.trim() === "299462959914851") {
-        text += `Nous tenons à vous remercier pour votre confiance et votre fidélité. C'est grâce à vous que nous pouvons continuer à servir notre communauté avec dévouement et engagement. Nous vous souhaitons à vous et à vos familles une merveilleuse fête des mères, pleine d'amour, de bonheur et de beaux souvenirs.\n\nVous recevrez 1000 frs de crédit téléphonique sous 24H.\n\nFaites participer vos proches en leurs envoyant le message suivant.`;
+    if (report_into) {
+        text += report_into;
+        // text += `Nous tenons à vous remercier pour votre confiance et votre fidélité. C'est grâce à vous que nous pouvons continuer à servir notre communauté avec dévouement et engagement. Nous vous souhaitons à vous et à vos familles une merveilleuse fête des mères, pleine d'amour, de bonheur et de beaux souvenirs.\n\nVous recevrez 1000 frs de crédit téléphonique sous 24H.\n\nFaites participer vos proches en leurs envoyant le message suivant.`;
     } else {
-        for (let chat of chats) {
-            if (!chat.send) chat.send = ``;
-            text += `*${company}*: ${chat.send}\n*${username}*: ${chat.received}\n\n`;
-        }
-
-        // Ketourah
+        
+        /* Ketourah
         if (phoneNumberId.trim() === "100609346426084") {
             text += `Cliquez sur le lien ci-dessous pour choisir une date et une plage horaire pour vos soins ou votre consultation.`;
-        }
+        }*/
+    }
+    for (let chat of chats) {
+        if (!chat.send) chat.send = ``;
+        text += `*${company}*: ${chat.send}\n*${username}*: ${chat.received}\n\n`;
     }
     // const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const isAdded = await scenarioRepository.updateUser(phoneNumberId, recipientPhone, username);
+    await scenarioRepository.updateUser(phoneNumberId, recipientPhone, username);
     return {
         messaging_product: "whatsapp",
         to: recipientPhone,

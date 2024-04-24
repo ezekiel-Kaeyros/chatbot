@@ -1,4 +1,5 @@
 import { QuestionModel } from "./dto/scenario-input";
+import { User } from "./scenario-model";
 
 export type Chat = {
     send?: string;
@@ -13,6 +14,10 @@ export type Conversation = {
     timeout?: Date;
     token?: string;
     company?: string;
+    report_into?: string;
+    last_message?: string;
+    times?: number;
+    users?: User[]
 };
 // Map<phone, Map<company, chat>>
 export const sessions = new Map<string, Map<string, Conversation>>();
