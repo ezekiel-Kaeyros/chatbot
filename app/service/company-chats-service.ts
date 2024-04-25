@@ -12,6 +12,7 @@ import { TombolaProductModel } from "../models/tombola-product-model";
 import { CompanyChatRespository } from "../repository/company-chat-repository";
 import { ResponseModel } from "../models/dto/scenario-input";
 import { ScenarioRespository } from "../repository/scenario-repository";
+import { getCatalogProducts } from "../utility/meta-request";
 
 const companyChatsRepository = new CompanyChatRespository();
 const credentialsRepository = new CredentialsRepository();
@@ -116,23 +117,6 @@ export class CompanyChatsService {
                 } else {
                     const last_message = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).last_message;
                     if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
-                        const scenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
-                        /*
-                        if (scenario.keywords && scenario.keywords.length !== 0) {
-                            let inputText = '';
-                            if (waResponse.type === "text") inputText = waResponse.data.text.body.trim();
-                            if (waResponse.type === "button") inputText = waResponse.data.button.text.trim();
-                            if (!scenario.keywords.includes(inputText)) {
-                                let message = `Utilisez le(s) mot(s) clé(s) suivant\n`;
-                                scenario.keywords.forEach(word => message += `*${word}* `);
-                                message += `pour initialiser la conservation ou utilisez un lien s'il vous a été envoyé.`;
-                                await forbiddenUserResponse({
-                                    recipientPhone: waResponse.phone_number,
-                                    message: message
-                                }, waResponse.phone_number_id, token);
-                                return res.status(200).send({});
-                            }
-                        }*/
                         if (waResponse.type === "text" || waResponse.type === "button") {
                             if (waResponse.type === "button") {
                                 console.dir(waResponse.data.button, { depth: null });
@@ -228,6 +212,53 @@ export class CompanyChatsService {
                                     date: new Date()
                                 }, req.io);
     
+                            data = askQuestion(
+                                waResponse.phone_number,
+                                sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]
+                            );
+                        } else if (waResponse.type === "order") {
+                            const products = waResponse.data.order.product_items as Array<{
+                                product_retailer_id: string,
+                                quantity: string,
+                                item_price: string,
+                                currency: string
+                            }>;
+
+                            const result = await getCatalogProducts();
+    
+                            let order = ``;
+                            let total = 0;
+                            if (result.status === 200) {
+                                const productsList = result.data.data as Array<{id: string, name: string, retailer_id: string}>;
+                                console.log("___________PRODUCTS LIST_________________");
+                                console.dir(productsList, { depth: null });
+                                let productItem;
+                                for (let product of products) {
+                                    productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
+                                    order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                    total += (+product.quantity) * (+product.item_price);
+                                }
+                            } else {
+                                for (let product of products) {
+                                    order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                    total += (+product.quantity) * (+product.item_price);
+                                }
+                            }
+                            order += `Total: *€${total}*\n\n`;
+
+                            sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: `\n\n*Command*\n${order}` });
+
+                            // Save chat
+                            await companyChatsRepository.addChatMessage(
+                                waResponse.phone_number_id,
+                                waResponse.phone_number,
+                                {
+                                    text: `\n\n*Command*\n${order}`,
+                                    is_bot: true,
+                                    is_admin: false,
+                                    date: new Date()
+                                }, req.io);
+
                             data = askQuestion(
                                 waResponse.phone_number,
                                 sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]
@@ -421,12 +452,26 @@ export class CompanyChatsService {
                                 item_price: string,
                                 currency: string
                             }>;
+
+                            const result = await getCatalogProducts();
     
                             let order = ``;
                             let total = 0;
-                            for (let product of products) {
-                                order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                total += (+product.quantity) * (+product.item_price);
+                            if (result.status === 200) {
+                                const productsList = result.data.data as Array<{id: string, name: string, retailer_id: string}>;
+                                console.log("___________PRODUCTS LIST_________________");
+                                console.dir(productsList, { depth: null });
+                                let productItem;
+                                for (let product of products) {
+                                    productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
+                                    order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                    total += (+product.quantity) * (+product.item_price);
+                                }
+                            } else {
+                                for (let product of products) {
+                                    order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                    total += (+product.quantity) * (+product.item_price);
+                                }
                             }
                             order += `Total: *€${total}*\n\n`;
 

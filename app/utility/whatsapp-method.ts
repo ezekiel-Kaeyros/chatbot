@@ -120,8 +120,8 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                 id: body.entry[0].changes[0].value.messages[0].id
             };
 
-            const token = (await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
-            await markMessageAsRead(waResponse.id, waResponse.phone_number_id, token);
+            const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+            if (credentials) await markMessageAsRead(waResponse.id, waResponse.phone_number_id, credentials.token);
             
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                 //console.log("LOYATY PROGRAM: ", waResponse.data.text.body);
@@ -140,7 +140,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                         await forbiddenUserResponse({
                             recipientPhone: waResponse.phone_number,
                             message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
-                        }, waResponse.phone_number_id, token);
+                        }, waResponse.phone_number_id, conversation.token);
                         return false;
                     } else {
                         if (!sessions.has(waResponse.phone_number)) {
