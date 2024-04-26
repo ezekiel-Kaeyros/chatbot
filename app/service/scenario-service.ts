@@ -7,7 +7,6 @@ import { AppValidationError } from "../utility/errors";
 import { autoInjectable } from "tsyringe";
 import { duplicatedLabel, extractLabelsOfInteractiveResponses, identifyScenario, longLabel, parseScenario, removeEmptyArray } from "../utility/parseScenario";
 import { CredentialsRepository } from "../repository/credentials-repository";
-import { CompanyChatRespository } from "../repository/company-chat-repository";
 import { Request, Response } from 'express';
 
 const repository = new ScenarioRespository();
@@ -64,7 +63,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(400)
-                .send(error);
+                .send({ error: error?.message });
         }
     }
 
@@ -78,7 +77,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(400)
-                .send(error);
+                .send({ error: error?.message });
         }
     }
 
@@ -86,7 +85,7 @@ export class ScenarioService {
         try {
             const input = plainToClass(ScenarioInput, req.body);
             const error = await AppValidationError(input);
-            if (error) return ErrorResponse(404, error);
+            if (error) return res.status(404).send(error);
 
             const data = await repository.activeScenario(input);
             return res
@@ -96,7 +95,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(500)
-                .send({ message: "custom error response" });
+                .send({ error: error?.message });
         }
     }
 
@@ -113,7 +112,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(500)
-                .send({ message: "custom error response" });
+                .send({ error: error?.message });
         }
     }
 
@@ -135,14 +134,14 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(500)
-                .send({ message: "custom error response" });
+                .send({ error: error?.message });
         }
     }
 
     async deleteScenario(req: Request, res: Response) {
         try {
             const scenarioId = req.params?.id as string;
-            if (!scenarioId) return ErrorResponse(403, "please provide product id");
+            if (!scenarioId) return res.status(403).send("please provide product id");
 
             const data = await repository.deleteScenario(scenarioId)
             return res
@@ -152,7 +151,7 @@ export class ScenarioService {
             console.log(error);
             return res
                 .status(500)
-                .send({ message: "custom error response" });
+                .send({ error: error?.message });
         }
     }
 }

@@ -107,11 +107,6 @@ export class CompanyChatRespository {
     }
 
     async addChatMessage(phone_number_id: string, phone_number: string, chat_message: ChatMessageModel, io: any) {
-        // await this.socketPostMessage({
-        //     phone_number_id,
-        //     phone_number,
-        //     chat_message
-        // });
         try {
             chat_message.is_read = false;
             let res: any

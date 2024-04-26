@@ -25,6 +25,7 @@ import { RandomDrawInput } from "../models/dto/random-draw-input";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { UpdateBroadcastStatusInput } from "../models/dto/update-broadcast-status-input";
 import { BroadcastStatusModel } from "../models/broadcast-status-model";
+import { TimeToDisableBot, TypeWhatsappMessage } from "../enums/bot-enum";
 
 const companyChatsRepository = new CompanyChatRespository();
 const scenarioRepository = new ScenarioRespository();
@@ -120,9 +121,44 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                 id: body.entry[0].changes[0].value.messages[0].id
             };
 
+            // MARK MESSAGE AS READ
             const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
             if (credentials) await markMessageAsRead(waResponse.id, waResponse.phone_number_id, credentials.token);
-            
+
+            // STOP BOT
+            const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
+           
+            if (chats && 
+                chats.chat_messages && 
+                chats.chat_messages.length > 0
+            ) {
+                const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
+                if (lastAdminChatMessage) {
+                    const dateLastMessage = new Date(lastAdminChatMessage.date);
+                    const currentDate = new Date();
+                    const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
+                    const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
+                    
+                    if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
+                        const message: string = getContentWhatsappMessage(waResponse);
+                        await companyChatsRepository.addChatMessage(
+                            waResponse.phone_number_id,
+                            waResponse.phone_number,
+                            {
+                                text: message,
+                                is_bot: false,
+                                is_admin: false,
+                                date: new Date()
+                            },
+                            body.io
+                        );
+                        sessions.clear();
+                        return false
+                    }
+                }
+            }
+
+            // LOYALTY PROGRAM REQUEST
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                 //console.log("LOYATY PROGRAM: ", waResponse.data.text.body);
             } else if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Tombola: ")) {
@@ -677,3 +713,16 @@ export const sendProductsTemplate = async (
         }
     });
 };
+
+export const getContentWhatsappMessage = (waResponse: WAResponseModel): string => {
+    if(waResponse.type === TypeWhatsappMessage.INTERACTIVE) {
+        if (waResponse.data.interactive.type === TypeWhatsappMessage.BUTTON_REPLY) {
+            return waResponse.data.interactive.button_reply.title
+        } else {
+            return waResponse.data.interactive.list_reply.title
+        }
+    } else if (waResponse.type === TypeWhatsappMessage.TEXT) {
+        return waResponse.data.text.body
+    }
+    return '';
+}

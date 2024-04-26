@@ -35,6 +35,11 @@ router.get(
     scenarioService.getScenario
 );
 
+router.get(
+    '/delete/:id',
+    scenarioService.deleteScenario
+);
+
 router.post(
     '/active',
     scenarioService.activeScenario

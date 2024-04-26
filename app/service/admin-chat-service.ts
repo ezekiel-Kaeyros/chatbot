@@ -4,6 +4,12 @@ import { autoInjectable } from "tsyringe";
 import { ErrorResponse, SuccessResponse } from "../utility/response";
 import { ScenarioRespository } from "../repository/scenario-repository";
 import { Request, Response } from 'express';
+import { sessions } from "../models/chat-model";
+import { ChatMessageModel } from "../models/company-chats-model";
+import { sendWhatsappMessage, textMessage } from "../utility/whatsapp-method";
+import { plainToClass } from "class-transformer";
+import { ChatInput } from "../models/dto/chat-input";
+import { AppValidationError } from "../utility/errors";
 
 const companyChatsRepository: CompanyChatRespository = new CompanyChatRespository();
 const scenariorepository: ScenarioRespository = new ScenarioRespository();
@@ -17,12 +23,29 @@ export class AdminChatsService {
         return ErrorResponse(404, "request method is not supported!");
     }
 
-    async sendChatMessage(event: APIGatewayProxyEventV2) {
+    async sendChatMessage(req: any, res: Response) {
         try {
+            const input = plainToClass(ChatInput, req.body);
+            const error = await AppValidationError(input);
+            if (error) return res.status(404).send(error);
+
+            const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
+            if (!token) {
+                return res.status(400).send({success: false, message: "Il n'existe aucune conversation ouverte avec ce client"});
+            }
+            const chatMessage : ChatMessageModel = {text: input.message, is_admin: true, is_bot: false, date: new Date()};
+            const data = await companyChatsRepository.addChatMessage(input.phone_number_id, input.phone_number, chatMessage, req.io);
             
+            if (data) {
+                let status = await sendWhatsappMessage(input.phone_number_id, token, textMessage({
+                    recipientPhone: input.phone_number,
+                    message: input.message
+                }));
+            }
+            return res.status(200).send({success: true, data});
         } catch (error) {
             console.log(error);
-            return ErrorResponse(500, error);
+            return res.status(500).send({error: error?.message});
         }
     }
 
@@ -32,7 +55,7 @@ export class AdminChatsService {
             return res.status(200).send(data);
         } catch (error) {
             console.log(error);
-            return res.status(500).send(error);
+            return res.status(500).send({ error: error?.message });
         }
     }
 
@@ -47,7 +70,7 @@ export class AdminChatsService {
             return res.status(200).send({ data, filter_labels: activeScenario.interactive_labels });
         } catch (error) {
             console.log(error);
-            return res.status(500).send(error);
+            return res.status(500).send({ error: error?.message });
         }
     }
 
@@ -65,7 +88,7 @@ export class AdminChatsService {
             return res.status(200).send(companyChats);
         } catch (error) {
             console.log(error);
-            return res.status(200).send(error);
+            return res.status(200).send({ error: error?.message });
         }
     }
 
