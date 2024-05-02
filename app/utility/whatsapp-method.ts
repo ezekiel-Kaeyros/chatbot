@@ -30,7 +30,7 @@ import { TimeToDisableBot, TypeWhatsappMessage } from "../enums/bot-enum";
 const companyChatsRepository = new CompanyChatRespository();
 const scenarioRepository = new ScenarioRespository();
 const credentialsRepository = new CredentialsRepository();
-
+/*
 const newConversation = async (phone_number_id: string) => {
     const repository = new ScenarioRespository();
     const scenario = await repository.getScenarioByPhoneNumberId(phone_number_id);
@@ -44,7 +44,7 @@ const newConversation = async (phone_number_id: string) => {
         token: (await credentialsRepository.getByPhoneNumber(phone_number_id)).token,
         company: scenario.company
     };
-};
+};*/
 
 export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|boolean> => {
     console.dir("INCOMMING MESSAGE: ");
@@ -168,11 +168,11 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     if (!sessions.has(waResponse.phone_number)) sessions.delete(waResponse.phone_number);
                 }
 
-                //const activeScenario = await scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
+                /*
                 const conversation = await getSuitableScenario(waResponse);
                 if (conversation.times !== undefined && conversation.times > 0) {
+
                     if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
-                        //const token = (await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
                         await forbiddenUserResponse({
                             recipientPhone: waResponse.phone_number,
                             message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
@@ -180,24 +180,84 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                         return false;
                     } else {
                         if (!sessions.has(waResponse.phone_number)) {
-                            // const conversation = await newConversation(waResponse.phone_number_id);
                             const companiesChats = new Map<string, Conversation>();
                             companiesChats.set(waResponse.phone_number_id, conversation);
                             sessions.set(waResponse.phone_number, companiesChats);
                         } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                            // const conversation = await newConversation(waResponse.phone_number_id);
                             sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
                         }
                     }
                 } else {
                     if (!sessions.has(waResponse.phone_number)) {
-                        // const conversation = await newConversation(waResponse.phone_number_id);
                         const companiesChats = new Map<string, Conversation>();
                         companiesChats.set(waResponse.phone_number_id, conversation);
                         sessions.set(waResponse.phone_number, companiesChats);
                     } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                        // const conversation = await newConversation(waResponse.phone_number_id);
                         sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
+                    } else {
+                        const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+                        await forbiddenUserResponse({
+                            recipientPhone: waResponse.phone_number,
+                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                        }, waResponse.phone_number_id, companyCredentials.token);
+                        return false;
+                    }
+                }*/
+
+
+                if (!sessions.has(waResponse.phone_number)) {
+                    const conversation = await getSuitableScenario(waResponse);
+                    console.log("PHONE____________________", conversation);
+                    if (conversation) {
+                        if (conversation.times !== undefined && conversation.times > 0) {
+                            if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
+                                await forbiddenUserResponse({
+                                    recipientPhone: waResponse.phone_number,
+                                    message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
+                                }, waResponse.phone_number_id, conversation.token);
+                                return false;
+                            } else {
+                                const companiesChats = new Map<string, Conversation>();
+                                companiesChats.set(waResponse.phone_number_id, conversation);
+                                sessions.set(waResponse.phone_number, companiesChats);
+                            }
+                        } else {
+                            const companiesChats = new Map<string, Conversation>();
+                            companiesChats.set(waResponse.phone_number_id, conversation);
+                            sessions.set(waResponse.phone_number, companiesChats);
+                        }
+                    } else {
+                        const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+                        await forbiddenUserResponse({
+                            recipientPhone: waResponse.phone_number,
+                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                        }, waResponse.phone_number_id, companyCredentials.token);
+                        return false;
+                    }
+                } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
+                    console.log("NUMBER ID__________________________");
+                    const conversation = await getSuitableScenario(waResponse);
+                    if (conversation) {
+                        if (conversation.times !== undefined && conversation.times > 0) {
+                            if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
+                                await forbiddenUserResponse({
+                                    recipientPhone: waResponse.phone_number,
+                                    message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
+                                }, waResponse.phone_number_id, conversation.token);
+                                return false;
+                            } else {
+                                sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
+                            }
+                        } else {
+                            sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
+                        }
+                    } else {
+                        const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+                        await forbiddenUserResponse({
+                            recipientPhone: waResponse.phone_number,
+                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                        }, waResponse.phone_number_id, companyCredentials.token);
+                        return false;
                     }
                 }
             }
@@ -226,33 +286,25 @@ export const getSuitableScenario = async (waResponse: WAResponseModel) => {
     const chats: Chat[] = [];
 
     for (let scen of companyScenarios) {
-        if (scen?.keywords && scen?.keywords.includes(message)) {
-            return {
-                scenario: scen.description,
-                chats: chats,
-                timeout: new Date(),
-                token: companyCredentials.token,
-                company: scen.company,
-                report_into: scen?.report_into,
-                last_message: scen?.last_message,
-                times: scen.times,
-                users: scen?.users
-            };
+        if (scen?.keywords) {
+            const keywords: string[] = scen?.keywords.map(keyword => keyword.trim().toLocaleLowerCase());
+            console.log("---------------------", keywords, message.trim().toLocaleLowerCase(), "-------------------");
+            if (keywords.includes(message.trim().toLocaleLowerCase())) {
+                return {
+                    scenario: scen.description,
+                    chats: chats,
+                    timeout: new Date(),
+                    token: companyCredentials.token,
+                    company: scen.company,
+                    report_into: scen?.report_into,
+                    last_message: scen?.last_message,
+                    times: scen.times,
+                    users: scen?.users
+                };
+            }
         }
     }
-
-    const activeScenario = companyScenarios.find(scen => scen.active);
-    return {
-        scenario: activeScenario.description,
-        chats: chats,
-        timeout: new Date(),
-        token: companyCredentials.token,
-        company: activeScenario.company,
-        report_into: activeScenario?.report_into,
-        last_message: activeScenario?.last_message,
-        times: activeScenario.times,
-        users: activeScenario?.users
-    };
+    return false;
 };
 
 export const forbiddenUserResponse = async (data: WAText, phone_number_id: string, token: string) => {

@@ -31,7 +31,7 @@ export class ScenarioService {
             if (error) return res.status(404).send(error);
 
             await removeEmptyArray(input.description);
-            if (await longLabel(input.description)) throw new Error("Long label, more characters than max!");
+            await longLabel(input.description);
             if (await duplicatedLabel(input.description)) throw new Error("Duplicate questions or answers, or check your products template if threre is!");
             
             const badNbr =  await parseScenario(input.description);

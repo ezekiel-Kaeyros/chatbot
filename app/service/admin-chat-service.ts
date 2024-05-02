@@ -29,9 +29,14 @@ export class AdminChatsService {
             const error = await AppValidationError(input);
             if (error) return res.status(404).send(error);
 
-            const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
-            if (!token) {
-                return res.status(400).send({success: false, message: "Il n'existe aucune conversation ouverte avec ce client"});
+            //const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
+            let token: string;
+            if (!sessions.has(input.phone_number)) {
+                return res.status(400).send("Il n'existe aucune conversation ouverte avec ce client");
+            } else if (!sessions.get(input.phone_number).has(input.phone_number_id)) {
+                return res.status(400).send("Il n'existe aucune conversation ouverte avec ce client");
+            } else {
+                token = sessions.get(input.phone_number).get(input.phone_number_id).token;
             }
             const chatMessage : ChatMessageModel = {text: input.message, is_admin: true, is_bot: false, date: new Date()};
             const data = await companyChatsRepository.addChatMessage(input.phone_number_id, input.phone_number, chatMessage, req.io);
@@ -42,7 +47,7 @@ export class AdminChatsService {
                     message: input.message
                 }));
             }
-            return res.status(200).send({success: true, data});
+            return res.status(200).send(data);
         } catch (error) {
             console.log(error);
             return res.status(500).send({error: error?.message});

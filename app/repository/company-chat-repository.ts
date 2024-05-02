@@ -59,7 +59,7 @@ export class CompanyChatRespository {
             }
         })
         companyChats.markModified('conversations');
-        companyChats.save();
+        companyChats.updateOne();
         return chatsConversation;
     }
 
@@ -74,7 +74,7 @@ export class CompanyChatRespository {
         existingCompanyChats.company = company;
         existingCompanyChats.conversations = conversations;
         existingCompanyChats.markModified('conversations');
-        return existingCompanyChats.save();
+        return existingCompanyChats.updateOne();
     }
 
     async createConversation(

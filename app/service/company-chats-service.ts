@@ -230,7 +230,6 @@ export class CompanyChatsService {
                             let total = 0;
                             if (result.status === 200) {
                                 const productsList = result.data.data as Array<{id: string, name: string, retailer_id: string}>;
-                                console.log("___________PRODUCTS LIST_________________");
                                 console.dir(productsList, { depth: null });
                                 let productItem;
                                 for (let product of products) {

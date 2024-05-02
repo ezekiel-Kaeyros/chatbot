@@ -37,13 +37,13 @@ export const parseScenario = async (questions: QuestionModel[], phone_number_id:
                 phone_number_id
             });
             if (whatsappAccessStatus !== 200) {
-                throw new Error("Check your phone number ID and try again");
+                throw new Error("your phone number ID does not exist");
             } else {
                 const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
                 const { status, data } = await getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
                 
                 if (status !== 200) {
-                    throw new Error("Unable to check if your template exists, try again");
+                    throw new Error("Impossible get retreive your templates list, check your internet connection");
                 } else {
                     const templatesList = data.data as TemplateResponseModel[];
                     if (!(templatesList.find(template => template.name === question.responses[0].label))) {
@@ -56,7 +56,7 @@ export const parseScenario = async (questions: QuestionModel[], phone_number_id:
                 }
             }
         } else {
-            return true;
+            throw new Error("Bad format responses, check the number of your responses");
         }
     }
     return false;
@@ -72,27 +72,12 @@ export const extractLabelsOfInteractiveResponses = async (questions: QuestionMod
                 });
                 if (response.questions) {
                     const subLabels = await extractLabelsOfInteractiveResponses(response.questions);
-                    filterLabels[filterLabels.length - 1].child = subLabels
+                    filterLabels[filterLabels.length - 1].child = subLabels;
                 }
             }
         }
     }
     return filterLabels;
-    /*
-    const labels: string[] = [];
-    for (let question of questions) {
-        if (question.responses && question.responses.length >= 2) {
-            for (let response of question.responses) {
-                labels.push(response.label);
-
-                if (response.questions) {
-                    const subLabels = await extractLabelsOfInteractiveResponses(response.questions);
-                    labels.push(...subLabels);
-                }
-            }
-        }
-    }
-    return labels; */
 }
 
 export const duplicatedLabel = async (data: QuestionModel[] | ResponseModel[]): Promise<boolean> => {
@@ -115,22 +100,27 @@ export const duplicatedLabel = async (data: QuestionModel[] | ResponseModel[]): 
     return false; // only return false once everything is checked
 };
 
-export const longLabel = async (data: QuestionModel[] | ResponseModel[]): Promise<boolean> => {
+export const longLabel = async (data: QuestionModel[] | ResponseModel[]) => {
     for (let obj of data) {
-        if ("responses" in obj) {
-            if (obj.label.length > 1024) return true;
+        if ("questions" in obj) {
+            if (obj.label.length > 20) {
+                throw new Error(`The question '${obj.label}' has more than 20 characters`);
+            }
+            for (let subObj of obj.questions) {
+                if (subObj.label.length > 1024) throw new Error(`The question '${subObj.label}' has more than 1024 characters`);
+            }
         } else if ("responses" in obj) {
-            if (obj.label.length > 20) return true
+            if (obj.label.length > 1024) {
+                throw new Error(`The response '${obj.label}' has more than 1024 characters`);
+            }
+            for (let subObj of obj.responses) {
+                if (subObj.label.length > 20) throw new Error(`The response '${subObj.label}' has more than 20 characters`);
+            }
         }
 
-        let subLength;
-
-        if ("questions" in obj) subLength = await longLabel(obj.questions!);
-        if ("responses" in obj) subLength = await longLabel(obj.responses!);
-
-        if (subLength) return true;
+        if ("questions" in obj) longLabel(obj.questions!);
+        if ("responses" in obj) longLabel(obj.responses!);
     }
-    return false;
 };
 
 export const removeSpecialCharacter = (label: string) => {
