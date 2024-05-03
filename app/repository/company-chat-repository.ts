@@ -53,7 +53,7 @@ export class CompanyChatRespository {
                 if (!chatMessage.is_read) chatMessage.is_read = true;
                 return chatMessage;
             });
-            if (chatsConversation.hasOwnProperty("unread_msg")) chatsConversation.unread_msg = 0;
+            if (chatsConversation?.unread_msg) chatsConversation.unread_msg = 0;
             companyChats?.conversations.map(conversation => {
                 if (conversation.phone_number === phone_number) {
                     conversation = chatsConversation;

@@ -94,13 +94,13 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     status: broadcastStatus.status,
                     error: broadcastStatus.error_details
                 }, broadcastStatus.phone_number_id);
-                console.dir(result, { depth: null });
+                //console.dir(result, { depth: null });
             } else {
                 const result = await bulkmessageUpdateBroadcastStatus({
                     response_id: broadcastStatus.id,
                     status: broadcastStatus.status
                 }, broadcastStatus.phone_number_id);
-                console.dir(result, { depth: null });
+                //console.dir(result, { depth: null });
             }
         }
 
@@ -195,10 +195,13 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                         }
                     } else {
                         const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
-                        await forbiddenUserResponse({
-                            recipientPhone: waResponse.phone_number,
-                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
-                        }, waResponse.phone_number_id, companyCredentials.token);
+                        if (companyCredentials?.token) {
+
+                            await forbiddenUserResponse({
+                                recipientPhone: waResponse.phone_number,
+                                message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                            }, waResponse.phone_number_id, companyCredentials.token);
+                        }
                         return false;
                     }
                 } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
@@ -227,7 +230,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     }
                 }
             }
-            
+            console.log(waResponse.data);
             return waResponse;
         }
         return false;
