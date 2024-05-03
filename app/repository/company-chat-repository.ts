@@ -45,22 +45,24 @@ export class CompanyChatRespository {
 
     async getChatsConversation(phone_number_id: string, phone_number: string) {
         const companyChats = await companiesChats.findOne({phone_number_id}) as CompanyChatsDoc;
-        const chatsConversation = companyChats.conversations.find(
-            conversation => conversation.phone_number === phone_number
-        );
-        chatsConversation.chat_messages.map(chatMessage => {
-            if (!chatMessage.is_read) chatMessage.is_read = true;
-            return chatMessage;
-        });
-        chatsConversation.unread_msg = 0;
-        companyChats.conversations.map(conversation => {
-            if (conversation.phone_number === phone_number) {
-                conversation = chatsConversation;
-            }
-        })
-        companyChats.markModified('conversations');
-        companyChats.updateOne();
-        return chatsConversation;
+        if (companyChats?.conversations) {
+            const chatsConversation = companyChats.conversations.find(
+                conversation => conversation.phone_number === phone_number
+            );
+            chatsConversation?.chat_messages.map(chatMessage => {
+                if (!chatMessage.is_read) chatMessage.is_read = true;
+                return chatMessage;
+            });
+            if (chatsConversation.hasOwnProperty("unread_msg")) chatsConversation.unread_msg = 0;
+            companyChats?.conversations.map(conversation => {
+                if (conversation.phone_number === phone_number) {
+                    conversation = chatsConversation;
+                }
+            })
+            companyChats.markModified('conversations');
+            companyChats.updateOne();
+            return chatsConversation;
+        }
     }
 
     async updateCompanyChats({

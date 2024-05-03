@@ -68,7 +68,13 @@ export class ScenarioRespository {
         title,
         phone_number_id,
         company,
-        description
+        description,
+        interactive_labels,
+        times,
+        keywords,
+        company_id,
+        report_into,
+        last_message
     }: ScenarioInput) {
 
         const existingScenario = await scenarios.findById(_id) as ScenarioDoc;
@@ -76,6 +82,12 @@ export class ScenarioRespository {
         existingScenario.phone_number_id = phone_number_id;
         existingScenario.company = company;
         existingScenario.description = description;
+        existingScenario.interactive_labels = interactive_labels;
+        existingScenario.times = times,
+        existingScenario.keywords = keywords;
+        existingScenario.company_id = company_id;
+        existingScenario.report_into = report_into;
+        existingScenario.last_message = last_message;
         return existingScenario.save();
     }
 

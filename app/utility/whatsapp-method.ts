@@ -164,50 +164,17 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
             } else if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Tombola: ")) {
 
             } else {
+
+                if (waResponse.type === "text") {
+                    
+                }
+
                 if (waResponse.type === "button") {
                     if (!sessions.has(waResponse.phone_number)) sessions.delete(waResponse.phone_number);
                 }
 
-                /*
-                const conversation = await getSuitableScenario(waResponse);
-                if (conversation.times !== undefined && conversation.times > 0) {
-
-                    if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
-                        await forbiddenUserResponse({
-                            recipientPhone: waResponse.phone_number,
-                            message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
-                        }, waResponse.phone_number_id, conversation.token);
-                        return false;
-                    } else {
-                        if (!sessions.has(waResponse.phone_number)) {
-                            const companiesChats = new Map<string, Conversation>();
-                            companiesChats.set(waResponse.phone_number_id, conversation);
-                            sessions.set(waResponse.phone_number, companiesChats);
-                        } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                            sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
-                        }
-                    }
-                } else {
-                    if (!sessions.has(waResponse.phone_number)) {
-                        const companiesChats = new Map<string, Conversation>();
-                        companiesChats.set(waResponse.phone_number_id, conversation);
-                        sessions.set(waResponse.phone_number, companiesChats);
-                    } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                        sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
-                    } else {
-                        const companyCredentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
-                        await forbiddenUserResponse({
-                            recipientPhone: waResponse.phone_number,
-                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
-                        }, waResponse.phone_number_id, companyCredentials.token);
-                        return false;
-                    }
-                }*/
-
-
                 if (!sessions.has(waResponse.phone_number)) {
                     const conversation = await getSuitableScenario(waResponse);
-                    console.log("PHONE____________________", conversation);
                     if (conversation) {
                         if (conversation.times !== undefined && conversation.times > 0) {
                             if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
@@ -235,7 +202,6 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                         return false;
                     }
                 } else if (!sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                    console.log("NUMBER ID__________________________");
                     const conversation = await getSuitableScenario(waResponse);
                     if (conversation) {
                         if (conversation.times !== undefined && conversation.times > 0) {
