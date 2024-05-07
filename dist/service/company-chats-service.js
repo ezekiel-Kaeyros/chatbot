@@ -22,10 +22,10 @@ const credentials_repository_1 = require("../repository/credentials-repository")
 const whatsapp_method_1 = require("../utility/whatsapp-method");
 const chat_model_1 = require("../models/chat-model");
 const company_chat_repository_1 = require("../repository/company-chat-repository");
-const scenario_repository_1 = require("../repository/scenario-repository");
+const meta_request_1 = require("../utility/meta-request");
+const bot_enum_1 = require("../enums/bot-enum");
 const companyChatsRepository = new company_chat_repository_1.CompanyChatRespository();
 const credentialsRepository = new credentials_repository_1.CredentialsRepository();
-const scenarioRepository = new scenario_repository_1.ScenarioRespository();
 let CompanyChatsService = class CompanyChatsService {
     ResponseWithError(event) {
         return __awaiter(this, void 0, void 0, function* () {
@@ -60,17 +60,11 @@ let CompanyChatsService = class CompanyChatsService {
     sendMessage(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
-                const body = req.body;
-                // await sendChat(body);
-                // return res.status(200).send();
+                const body = Object.assign(Object.assign({}, req.body), { io: req.io });
                 let data;
                 if (yield (0, whatsapp_method_1.getWhatsappResponse)(body)) {
                     const waResponse = yield (0, whatsapp_method_1.getWhatsappResponse)(body);
-                    waResponse.phone_number_id;
-                    //const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
                     const token = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).token;
-                    //const token = credentials.token;
-                    // await markMessageAsRead(waResponse.id, token);
                     if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                         const programName = (0, whatsapp_method_1.getPrgramName)(waResponse.data.text.body);
                         let { status, data } = yield (0, whatsapp_method_1.loyaltyProgramSavePoint)({
@@ -121,25 +115,8 @@ let CompanyChatsService = class CompanyChatsService {
                         }
                     }
                     else {
+                        const last_message = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).last_message;
                         if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
-                            const scenario = yield scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
-                            if (scenario.keywords && scenario.keywords.length !== 0) {
-                                let inputText = '';
-                                if (waResponse.type === "text")
-                                    inputText = waResponse.data.text.body.trim();
-                                if (waResponse.type === "button")
-                                    inputText = waResponse.data.button.text.trim();
-                                if (!scenario.keywords.includes(inputText)) {
-                                    let message = `Utilisez le(s) mot(s) clé(s) suivant\n`;
-                                    scenario.keywords.forEach(word => message += `*${word}* `);
-                                    message += `pour initialiser la conservation ou utilisez un lien s'il vous a été envoyé.`;
-                                    yield (0, whatsapp_method_1.forbiddenUserResponse)({
-                                        recipientPhone: waResponse.phone_number,
-                                        message: message
-                                    }, waResponse.phone_number_id, token);
-                                    return res.status(200).send({});
-                                }
-                            }
                             if (waResponse.type === "text" || waResponse.type === "button") {
                                 if (waResponse.type === "button") {
                                     console.dir(waResponse.data.button, { depth: null });
@@ -163,8 +140,11 @@ let CompanyChatsService = class CompanyChatsService {
                                             text: waResponse.data.button.text,
                                             is_bot: false,
                                             is_admin: false,
-                                            date: new Date()
-                                        });
+                                            date: new Date(),
+                                            is_read: false,
+                                            chat_status: bot_enum_1.ChatStatus.START,
+                                            scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                        }, req.io);
                                     }
                                 }
                                 else {
@@ -180,8 +160,11 @@ let CompanyChatsService = class CompanyChatsService {
                                             text: waResponse.data.text.body,
                                             is_bot: false,
                                             is_admin: false,
-                                            date: new Date()
-                                        });
+                                            date: new Date(),
+                                            is_read: false,
+                                            chat_status: bot_enum_1.ChatStatus.START,
+                                            scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                        }, req.io);
                                     }
                                 }
                                 data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
@@ -189,14 +172,16 @@ let CompanyChatsService = class CompanyChatsService {
                             else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
                                 const label = waResponse.data.interactive.button_reply.title;
                                 chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
-                                // console.log("TEST")
                                 // Save chat
                                 yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.START,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
                                 data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
                             }
                             else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
@@ -207,8 +192,46 @@ let CompanyChatsService = class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.START,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
+                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
+                            }
+                            else if (waResponse.type === "order") {
+                                const products = waResponse.data.order.product_items;
+                                const result = yield (0, meta_request_1.getCatalogProducts)();
+                                let order = ``;
+                                let total = 0;
+                                if (result.status === 200) {
+                                    const productsList = result.data.data;
+                                    console.dir(productsList, { depth: null });
+                                    let productItem;
+                                    for (let product of products) {
+                                        productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
+                                        order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                        total += (+product.quantity) * (+product.item_price);
+                                    }
+                                }
+                                else {
+                                    for (let product of products) {
+                                        order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                        total += (+product.quantity) * (+product.item_price);
+                                    }
+                                }
+                                order += `Total: *€${total}*\n\n`;
+                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: `\n\n*Command*\n${order}` });
+                                // Save chat
+                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
+                                    text: `\n\n*Command*\n${order}`,
+                                    is_bot: true,
+                                    is_admin: false,
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.START,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
                                 data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
                             }
                             chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend = (0, whatsapp_method_1.saveQuestion)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
@@ -225,8 +248,11 @@ let CompanyChatsService = class CompanyChatsService {
                                     text: waResponse.data.text.body,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.PENDING,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
                                 const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label);
                                 if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.length > index + 1) {
                                     data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index + 1]);
@@ -235,15 +261,18 @@ let CompanyChatsService = class CompanyChatsService {
                                         chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index + 1];
                                 }
                                 else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
                                     // Save chat
                                     yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
-                                    });
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: bot_enum_1.ChatStatus.END,
+                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                    }, req.io);
+                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 }
                             }
                             else {
@@ -252,33 +281,6 @@ let CompanyChatsService = class CompanyChatsService {
                         }
                         else if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "button") {
                             if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
-                                // SEND TEMPLATE OF PRODUCTS CATALOG
-                                /*
-                                if (waResponse.phone_number_id === "100609346426084") {
-                                    const id = waResponse.data.interactive.button_reply.id;
-                                    const label = waResponse.data.interactive.button_reply.title;
-                                    const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                    sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = label;
-            
-                                    // Save chat
-                                    await companyChatsRepository.addChatMessage(
-                                        waResponse.phone_number_id,
-                                        waResponse.phone_number,
-                                        {
-                                            text: label,
-                                            is_bot: false,
-                                            is_admin: false,
-                                            date: new Date()
-                                        });
-    
-                                    await sendTemplateOfProductsCatalog(
-                                        waResponse.phone_number,
-                                        waResponse.phone_number_id,
-                                        "token"
-                                    );
-                                    return res.status(200).send({});
-                                }*/
-                                // END TEMPLATE OF PRODUCTS CATALOG
                                 const id = waResponse.data.interactive.button_reply.id;
                                 const label = waResponse.data.interactive.button_reply.title;
                                 const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
@@ -288,8 +290,11 @@ let CompanyChatsService = class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.PENDING,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
                                 const currentLabel = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                                 const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === currentLabel);
                                 const response = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index]
@@ -301,15 +306,18 @@ let CompanyChatsService = class CompanyChatsService {
                                     chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion = response.questions[0];
                                 }
                                 else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
                                     // Save chat
                                     yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
-                                    });
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: bot_enum_1.ChatStatus.END,
+                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                    }, req.io);
+                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 }
                             }
                             else {
@@ -327,8 +335,11 @@ let CompanyChatsService = class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.PENDING,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
                                 const currentLabel = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                                 const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === currentLabel);
                                 const response = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index]
@@ -340,15 +351,18 @@ let CompanyChatsService = class CompanyChatsService {
                                     chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion = response.questions[0];
                                 }
                                 else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
                                     // Save chat
                                     yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
-                                    });
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: bot_enum_1.ChatStatus.END,
+                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                    }, req.io);
+                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                                 }
                             }
                             else {
@@ -359,24 +373,40 @@ let CompanyChatsService = class CompanyChatsService {
                             if (waResponse.type === "order") {
                                 console.dir(waResponse.data, { depth: null });
                                 const products = waResponse.data.order.product_items;
+                                const result = yield (0, meta_request_1.getCatalogProducts)();
                                 let order = ``;
                                 let total = 0;
-                                for (let product of products) {
-                                    order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                    total += (+product.quantity) * (+product.item_price);
+                                if (result.status === 200) {
+                                    const productsList = result.data.data;
+                                    console.dir(productsList, { depth: null });
+                                    let productItem;
+                                    for (let product of products) {
+                                        productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
+                                        order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                        total += (+product.quantity) * (+product.item_price);
+                                    }
+                                }
+                                else {
+                                    for (let product of products) {
+                                        order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                                        total += (+product.quantity) * (+product.item_price);
+                                    }
                                 }
                                 order += `Total: *€${total}*\n\n`;
                                 const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
                                 chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length - 1].received = `\n\n*Command*\n${order}`;
-                                data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company);
-                                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
                                 // Save chat
                                 yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
                                     text: `\n\n*Command*\n${order}`,
                                     is_bot: true,
                                     is_admin: false,
-                                    date: new Date()
-                                });
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: bot_enum_1.ChatStatus.END,
+                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                                }, req.io);
+                                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             }
                             else {
                                 data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion);
@@ -390,14 +420,17 @@ let CompanyChatsService = class CompanyChatsService {
                                 text: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend,
                                 is_bot: true,
                                 is_admin: false,
-                                date: new Date()
-                            });
+                                date: new Date(),
+                                is_read: false,
+                                chat_status: bot_enum_1.ChatStatus.PENDING,
+                                scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
+                            }, req.io);
                         }
                         else {
-                            if (waResponse.phone_number_id === "299462959914851") {
+                            if (last_message) {
                                 yield (0, whatsapp_method_1.forbiddenUserResponse)({
                                     recipientPhone: waResponse.phone_number,
-                                    message: `Participez à la fêtes des mères et recevez 1000 frs de crédit de communication en cliquant sur ce lien.\nhttps://wa.me/message/UJBNPI6GLOCTN1`
+                                    message: last_message
                                 }, waResponse.phone_number_id, token);
                             }
                         }

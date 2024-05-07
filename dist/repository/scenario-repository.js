@@ -13,9 +13,20 @@ exports.ScenarioRespository = void 0;
 const scenario_model_1 = require("../models/scenario-model");
 class ScenarioRespository {
     constructor() { }
-    createScenario({ title, phone_number_id, company, description, interactive_labels, times, keywords, company_id }) {
+    createScenario({ title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
         return __awaiter(this, void 0, void 0, function* () {
-            console.log(interactive_labels);
+            const companyScenariosList = yield this.getCompanyScenarios(phone_number_id);
+            for (let scenario of companyScenariosList) {
+                if (title.toLocaleLowerCase().trim() === scenario.title.toLocaleLowerCase().trim())
+                    throw new Error(`${title} is already use as scenario title`);
+                if (keywords) {
+                    for (let word of keywords) {
+                        if ((scenario === null || scenario === void 0 ? void 0 : scenario.keywords) && (scenario === null || scenario === void 0 ? void 0 : scenario.keywords.includes(word)))
+                            throw new Error(`${word} is already use as scenario keyword`);
+                    }
+                }
+            }
+            console.log(report_into, last_message);
             return scenario_model_1.scenarios.create({
                 title,
                 phone_number_id,
@@ -25,7 +36,9 @@ class ScenarioRespository {
                 interactive_labels,
                 times,
                 keywords,
-                company_id
+                company_id,
+                report_into,
+                last_message
             });
         });
     }
@@ -52,13 +65,19 @@ class ScenarioRespository {
             return scenario_model_1.scenarios.find({ phone_number_id });
         });
     }
-    updateScenario({ _id, title, phone_number_id, company, description }) {
+    updateScenario({ _id, title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
         return __awaiter(this, void 0, void 0, function* () {
             const existingScenario = yield scenario_model_1.scenarios.findById(_id);
             existingScenario.title = title;
             existingScenario.phone_number_id = phone_number_id;
             existingScenario.company = company;
             existingScenario.description = description;
+            existingScenario.interactive_labels = interactive_labels;
+            existingScenario.times = times,
+                existingScenario.keywords = keywords;
+            existingScenario.company_id = company_id;
+            existingScenario.report_into = report_into;
+            existingScenario.last_message = last_message;
             return existingScenario.save();
         });
     }

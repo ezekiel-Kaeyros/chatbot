@@ -17,6 +17,7 @@ router.post('/create', scenarioService.createScenario);
 router.put('/edit/:id', scenarioService.editScenario);
 router.get('/getall', scenarioService.getScenarios);
 router.get('/getone/:id', scenarioService.getScenario);
+router.delete('/delete/:id', scenarioService.deleteScenario);
 router.post('/active', scenarioService.activeScenario);
 router.get('/scenarios/:phone_number_id', scenarioService.getCompanyScenarios);
 // CHATBOT

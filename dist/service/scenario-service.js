@@ -47,8 +47,7 @@ let ScenarioService = class ScenarioService {
                 if (error)
                     return res.status(404).send(error);
                 yield (0, parseScenario_1.removeEmptyArray)(input.description);
-                if (yield (0, parseScenario_1.longLabel)(input.description))
-                    throw new Error("Long label, more characters than max!");
+                yield (0, parseScenario_1.longLabel)(input.description);
                 if (yield (0, parseScenario_1.duplicatedLabel)(input.description))
                     throw new Error("Duplicate questions or answers, or check your products template if threre is!");
                 const badNbr = yield (0, parseScenario_1.parseScenario)(input.description);
@@ -68,7 +67,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send(error);
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -84,7 +83,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(400)
-                    .send(error);
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -102,7 +101,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(400)
-                    .send(error);
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -112,7 +111,7 @@ let ScenarioService = class ScenarioService {
                 const input = (0, class_transformer_1.plainToClass)(scenario_input_1.ScenarioInput, req.body);
                 const error = yield (0, errors_1.AppValidationError)(input);
                 if (error)
-                    return (0, response_1.ErrorResponse)(404, error);
+                    return res.status(404).send(error);
                 const data = yield repository.activeScenario(input);
                 return res
                     .status(200)
@@ -122,7 +121,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send({ message: "custom error response" });
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -142,7 +141,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send({ message: "custom error response" });
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -158,6 +157,17 @@ let ScenarioService = class ScenarioService {
                 if (!scenarioId)
                     return res.status(403).send("id must be provided!");
                 input._id = scenarioId;
+                yield (0, parseScenario_1.removeEmptyArray)(input.description);
+                yield (0, parseScenario_1.longLabel)(input.description);
+                if (yield (0, parseScenario_1.duplicatedLabel)(input.description))
+                    throw new Error("Duplicate questions or answers, or check your products template if threre is!");
+                const badNbr = yield (0, parseScenario_1.parseScenario)(input.description);
+                if (badNbr)
+                    return res.status(400).send("Number of responses not supported!");
+                yield (0, parseScenario_1.identifyScenario)(input.description);
+                const filterLabels = yield (0, parseScenario_1.extractLabelsOfInteractiveResponses)(input.description);
+                if (filterLabels.length !== 0)
+                    input.interactive_labels = filterLabels;
                 const data = yield repository.updateScenario(input);
                 return res
                     .status(200)
@@ -167,7 +177,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send({ message: "custom error response" });
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -177,7 +187,7 @@ let ScenarioService = class ScenarioService {
             try {
                 const scenarioId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!scenarioId)
-                    return (0, response_1.ErrorResponse)(403, "please provide product id");
+                    return res.status(403).send("please provide product id");
                 const data = yield repository.deleteScenario(scenarioId);
                 return res
                     .status(200)
@@ -187,7 +197,7 @@ let ScenarioService = class ScenarioService {
                 console.log(error);
                 return res
                     .status(500)
-                    .send({ message: "custom error response" });
+                    .send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }

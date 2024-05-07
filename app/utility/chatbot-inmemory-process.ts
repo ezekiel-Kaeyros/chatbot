@@ -106,7 +106,7 @@ export const processChatQueue = async (job: Job) => {
                             console.dir(waResponse.data.button.text, { depth: null });
                             sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: waResponse.data.button.text });
                             // Save chat
-                            await companyChatsRepository.addChatMessage(
+                            /*await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
                                 waResponse.phone_number,
                                 {
@@ -114,7 +114,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                }, io);
+                                }, io);*/
 
                             if (waResponse.data.button.text.trim() === "ça m'intéresse") {
                                 console.log("ça m'intéresse");
@@ -142,7 +142,7 @@ export const processChatQueue = async (job: Job) => {
                         } else {
                             sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: waResponse.data.text.body });
                             // Save chat
-                            await companyChatsRepository.addChatMessage(
+                            /*await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
                                 waResponse.phone_number,
                                 {
@@ -150,7 +150,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: false,
                                     is_admin: false,
                                     date: new Date()
-                                }, io);
+                                }, io);*/
                         }
                             
                         data = askQuestion(
@@ -162,7 +162,7 @@ export const processChatQueue = async (job: Job) => {
                         sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
                         // console.log("TEST")
                         // Save chat
-                        await companyChatsRepository.addChatMessage(
+                        /*await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
                             waResponse.phone_number,
                             {
@@ -170,7 +170,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            }, io);
+                            }, io);*/
 
                         data = askQuestion(
                             waResponse.phone_number,
@@ -181,7 +181,7 @@ export const processChatQueue = async (job: Job) => {
                         sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
 
                         // Save chat
-                        await companyChatsRepository.addChatMessage(
+                        /*await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
                             waResponse.phone_number,
                             {
@@ -189,7 +189,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            }, io);
+                            }, io);*/
 
                         data = askQuestion(
                             waResponse.phone_number,
@@ -206,7 +206,7 @@ export const processChatQueue = async (job: Job) => {
                         const length = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
                         sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = waResponse.data.text.body;
                         // Save chat
-                        await companyChatsRepository.addChatMessage(
+                        /*await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
                             waResponse.phone_number,
                             {
@@ -214,7 +214,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            }, io);
+                            }, io);*/
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
                             quest => quest.label === sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label
                         );
@@ -230,7 +230,7 @@ export const processChatQueue = async (job: Job) => {
                             data = await chatToString(sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name);
                             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             // Save chat
-                            await companyChatsRepository.addChatMessage(
+                            /*await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
                                 waResponse.phone_number,
                                 {
@@ -238,7 +238,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                }, io);
+                                }, io);*/
                         }
                     } else {
                         data = askQuestion(
@@ -254,7 +254,7 @@ export const processChatQueue = async (job: Job) => {
                         sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = label;
 
                         // Save chat
-                        await companyChatsRepository.addChatMessage(
+                        /*await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
                             waResponse.phone_number,
                             {
@@ -262,7 +262,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            }, io);
+                            }, io);*/
     
                         const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -282,7 +282,7 @@ export const processChatQueue = async (job: Job) => {
                             data = await chatToString(sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name);
                             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             // Save chat
-                            await companyChatsRepository.addChatMessage(
+                            /*await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
                                 waResponse.phone_number,
                                 {
@@ -290,7 +290,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                }, io);
+                                }, io);*/
                         }
                     } else {
                         data = askQuestion(
@@ -306,7 +306,7 @@ export const processChatQueue = async (job: Job) => {
                         sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length-1].received = label;
 
                         // Save chat
-                        await companyChatsRepository.addChatMessage(
+                        /*await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
                             waResponse.phone_number,
                             {
@@ -314,7 +314,7 @@ export const processChatQueue = async (job: Job) => {
                                 is_bot: false,
                                 is_admin: false,
                                 date: new Date()
-                            }, io);
+                            }, io);*/
     
                         const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
                         const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -334,7 +334,7 @@ export const processChatQueue = async (job: Job) => {
                             data = await chatToString(sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name);
                             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             // Save chat
-                            await companyChatsRepository.addChatMessage(
+                            /*await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
                                 waResponse.phone_number,
                                 {
@@ -342,7 +342,7 @@ export const processChatQueue = async (job: Job) => {
                                     is_bot: true,
                                     is_admin: false,
                                     date: new Date()
-                                }, io);
+                                }, io);*/
                         }
                     } else {
                         data = askQuestion(
@@ -361,7 +361,7 @@ export const processChatQueue = async (job: Job) => {
                 if (sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ send: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend });
                     // Save chat
-                    await companyChatsRepository.addChatMessage(
+                    /*await companyChatsRepository.addChatMessage(
                         waResponse.phone_number_id,
                         waResponse.phone_number,
                         {
@@ -369,7 +369,7 @@ export const processChatQueue = async (job: Job) => {
                             is_bot: true,
                             is_admin: false,
                             date: new Date()
-                        }, io);
+                        }, io);*/
                 }
 
                 return 200;

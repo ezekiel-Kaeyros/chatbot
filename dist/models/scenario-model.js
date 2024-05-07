@@ -15,7 +15,9 @@ const scenarioSchema = new mongoose_1.default.Schema({
     users: [{}],
     times: Number,
     keywords: [String],
-    company_id: String
+    company_id: String,
+    report_into: String,
+    last_message: String
 }, {
     toJSON: {
         transform(doc, ret, options) {

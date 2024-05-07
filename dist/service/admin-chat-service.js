@@ -23,6 +23,8 @@ const company_chat_repository_1 = require("../repository/company-chat-repository
 const tsyringe_1 = require("tsyringe");
 const response_1 = require("../utility/response");
 const scenario_repository_1 = require("../repository/scenario-repository");
+const whatsapp_method_1 = require("../utility/whatsapp-method");
+const bot_enum_1 = require("../enums/bot-enum");
 const companyChatsRepository = new company_chat_repository_1.CompanyChatRespository();
 const scenariorepository = new scenario_repository_1.ScenarioRespository();
 let AdminChatsService = class AdminChatsService {
@@ -32,13 +34,36 @@ let AdminChatsService = class AdminChatsService {
             return (0, response_1.ErrorResponse)(404, "request method is not supported!");
         });
     }
-    sendChatMessage(event) {
+    sendChatMessage(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
+                /*const input = plainToClass(ChatInput, req.body);
+                const error = await AppValidationError(input);
+                if (error) return res.status(404).send(error);
+    
+                const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
+                let token: string;
+                if (!sessions.has(input.phone_number)) {
+                    return res.status(400).send("Il n'existe aucune conversation ouverte avec ce client");
+                } else if (!sessions.get(input.phone_number).has(input.phone_number_id)) {
+                    return res.status(400).send("Il n'existe aucune conversation ouverte avec ce client");
+                } else {
+                    token = sessions.get(input.phone_number).get(input.phone_number_id).token;
+                }
+                const chatMessage : ChatMessageModel = {text: input.message, is_admin: true, is_bot: false, date: new Date()};
+                const data = await companyChatsRepository.addChatMessage(input.phone_number_id, input.phone_number, chatMessage, req.io);
+                
+                if (data) {
+                    let status = await sendWhatsappMessage(input.phone_number_id, token, textMessage({
+                        recipientPhone: input.phone_number,
+                        message: input.message
+                    }));
+                }
+                return res.status(200).send(data);*/
             }
             catch (error) {
                 console.log(error);
-                return (0, response_1.ErrorResponse)(500, error);
+                return res.status(500).send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -50,7 +75,7 @@ let AdminChatsService = class AdminChatsService {
             }
             catch (error) {
                 console.log(error);
-                return res.status(500).send(error);
+                return res.status(500).send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -62,12 +87,35 @@ let AdminChatsService = class AdminChatsService {
                 if (!phone_number_id)
                     return res.status(403).send("please provide company phone number id");
                 const data = yield companyChatsRepository.getCompanyChatsByPhoneNumberId(phone_number_id);
-                const activeScenario = yield scenariorepository.getScenarioByPhoneNumberId(phone_number_id);
-                return res.status(200).send({ data, filter_labels: activeScenario.interactive_labels });
+                const time = Date.now();
+                const conversations = data.conversations.sort((userA, userB) => {
+                    const aTime = new Date(userA.chat_messages[userA.chat_messages.length - 1].date).getTime();
+                    const bTime = new Date(userB.chat_messages[userB.chat_messages.length - 1].date).getTime();
+                    const aDelta = Math.abs(time - aTime);
+                    const bDelta = Math.abs(time - bTime);
+                    return (aDelta - bDelta);
+                });
+                for (let conv of conversations) {
+                    if (conv.chat_messages.length > 0) {
+                        const chats = conv.chat_messages.reverse();
+                        const index = chats.findIndex(message => message.is_bot === false);
+                        const timeLeft = (0, whatsapp_method_1.chatSessionTimeout)(chats[index].date, new Date()) / 60;
+                        if (timeLeft < 24) {
+                            if (chats[0].chat_status !== bot_enum_1.ChatStatus.PENDING)
+                                chats[0].chat_status = bot_enum_1.ChatStatus.OPEN;
+                        }
+                        else {
+                            chats[0].chat_status = bot_enum_1.ChatStatus.EXPIRED;
+                        }
+                        conv.chat_messages = chats.reverse();
+                    }
+                }
+                data.conversations = conversations;
+                return res.status(200).send(data);
             }
             catch (error) {
                 console.log(error);
-                return res.status(500).send(error);
+                return res.status(500).send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }
@@ -87,7 +135,7 @@ let AdminChatsService = class AdminChatsService {
             }
             catch (error) {
                 console.log(error);
-                return res.status(200).send(error);
+                return res.status(200).send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }

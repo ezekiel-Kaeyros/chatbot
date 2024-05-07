@@ -51,21 +51,24 @@ class CompanyChatRespository {
     getChatsConversation(phone_number_id, phone_number) {
         return __awaiter(this, void 0, void 0, function* () {
             const companyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
-            const chatsConversation = companyChats.conversations.find(conversation => conversation.phone_number === phone_number);
-            chatsConversation.chat_messages.map(chatMessage => {
-                if (!chatMessage.is_read)
-                    chatMessage.is_read = true;
-                return chatMessage;
-            });
-            chatsConversation.unread_msg = 0;
-            companyChats.conversations.map(conversation => {
-                if (conversation.phone_number === phone_number) {
-                    conversation = chatsConversation;
-                }
-            });
-            companyChats.markModified('conversations');
-            companyChats.save();
-            return chatsConversation;
+            if (companyChats === null || companyChats === void 0 ? void 0 : companyChats.conversations) {
+                const chatsConversation = companyChats.conversations.find(conversation => conversation.phone_number === phone_number);
+                chatsConversation === null || chatsConversation === void 0 ? void 0 : chatsConversation.chat_messages.map(chatMessage => {
+                    if (!chatMessage.is_read)
+                        chatMessage.is_read = true;
+                    return chatMessage;
+                });
+                if (chatsConversation === null || chatsConversation === void 0 ? void 0 : chatsConversation.unread_msg)
+                    chatsConversation.unread_msg = 0;
+                companyChats === null || companyChats === void 0 ? void 0 : companyChats.conversations.map(conversation => {
+                    if (conversation.phone_number === phone_number) {
+                        conversation = chatsConversation;
+                    }
+                });
+                companyChats.markModified('conversations');
+                companyChats.updateOne();
+                return chatsConversation;
+            }
         });
     }
     updateCompanyChats({ _id, phone_number_id, company, conversations }) {
@@ -75,7 +78,7 @@ class CompanyChatRespository {
             existingCompanyChats.company = company;
             existingCompanyChats.conversations = conversations;
             existingCompanyChats.markModified('conversations');
-            return existingCompanyChats.save();
+            return existingCompanyChats.updateOne();
         });
     }
     createConversation(phone_number_id, phone_number, chat_message) {
@@ -105,25 +108,28 @@ class CompanyChatRespository {
             return existingCompanyChats.save();
         });
     }
-    addChatMessage(phone_number_id, phone_number, chat_message) {
+    addChatMessage(phone_number_id, phone_number, chat_message, io) {
         return __awaiter(this, void 0, void 0, function* () {
-            // await this.socketPostMessage({
-            //     phone_number_id,
-            //     phone_number,
-            //     chat_message
-            // });
-            chat_message.is_read = false;
-            const companyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
-            if (companyChats) {
-                if (companyChats.conversations.some(conversation => conversation.phone_number === phone_number)) {
-                    return this.updateConversation(phone_number_id, phone_number, chat_message);
+            try {
+                chat_message.is_read = false;
+                let res;
+                const companyChats = yield company_chats_model_1.companiesChats.findOne({ phone_number_id });
+                if (companyChats) {
+                    if (companyChats.conversations.some(conversation => conversation.phone_number === phone_number)) {
+                        res = this.updateConversation(phone_number_id, phone_number, chat_message);
+                    }
+                    else {
+                        res = this.createConversation(phone_number_id, phone_number, chat_message);
+                    }
                 }
                 else {
-                    return this.createConversation(phone_number_id, phone_number, chat_message);
+                    res = this.createCompanyChats(phone_number_id, phone_number, chat_message);
                 }
+                io.emit(`message-${phone_number_id}-${phone_number}`, { data: res });
+                return res;
             }
-            else {
-                return this.createCompanyChats(phone_number_id, phone_number, chat_message);
+            catch (error) {
+                throw new Error(error);
             }
         });
     }

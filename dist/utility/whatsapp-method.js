@@ -12,30 +12,17 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.sendProductsTemplate = exports.sendTemplateOfProductsCatalog = exports.sendTemplateMessage = exports.bulkmessageUpdateBroadcastStatus = exports.tombolaSaveRandomDraw = exports.loyaltyProgramSavePoint = exports.getTombolaName = exports.getPrgramName = exports.markMessageAsRead = exports.findImageLinks = exports.chatSessionTimeout = exports.chatToString = exports.saveQuestion = exports.askQuestion = exports.getQuestionResponse = exports.catalogMessage = exports.productsTemplateMessage = exports.listMessage = exports.buttonsMessage = exports.imageMessage = exports.textMessage = exports.sendWhatsappMessage = exports.forbiddenUserResponse = exports.getWhatsappResponse = void 0;
+exports.getContentWhatsappMessage = exports.sendProductsTemplate = exports.sendTemplateOfProductsCatalog = exports.sendTemplateMessage = exports.bulkmessageUpdateBroadcastStatus = exports.tombolaSaveRandomDraw = exports.loyaltyProgramSavePoint = exports.getTombolaName = exports.getPrgramName = exports.markMessageAsRead = exports.findImageLinks = exports.chatSessionTimeout = exports.chatToString = exports.saveQuestion = exports.askQuestion = exports.catalogMessage = exports.productsTemplateMessage = exports.listMessage = exports.buttonsMessage = exports.imageMessage = exports.textMessage = exports.sendWhatsappMessage = exports.forbiddenUserResponse = exports.getSuitableScenario = exports.getWhatsappResponse = void 0;
 const axios_1 = __importDefault(require("axios"));
 const chat_model_1 = require("../models/chat-model");
 const scenario_repository_1 = require("../repository/scenario-repository");
 const message_queue_1 = require("../message-queue");
 const company_chat_repository_1 = require("../repository/company-chat-repository");
 const credentials_repository_1 = require("../repository/credentials-repository");
+const bot_enum_1 = require("../enums/bot-enum");
 const companyChatsRepository = new company_chat_repository_1.CompanyChatRespository();
 const scenarioRepository = new scenario_repository_1.ScenarioRespository();
 const credentialsRepository = new credentials_repository_1.CredentialsRepository();
-const newConversation = (phone_number_id) => __awaiter(void 0, void 0, void 0, function* () {
-    const repository = new scenario_repository_1.ScenarioRespository();
-    const scenario = yield repository.getScenarioByPhoneNumberId(phone_number_id);
-    const credentialsRepository = new credentials_repository_1.CredentialsRepository();
-    // console.log("SCENARIO:", scenario);
-    const chats = [];
-    return {
-        scenario: scenario.description,
-        chats: chats,
-        timeout: new Date(),
-        token: (yield credentialsRepository.getByPhoneNumber(phone_number_id)).token,
-        company: scenario.company
-    };
-});
 const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function* () {
     console.dir("INCOMMING MESSAGE: ");
     console.dir(body, { depth: null });
@@ -47,6 +34,15 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                     recipientPhone: phone,
                     message: "Session terminée"
                 }, company, token);
+                yield companyChatsRepository.addChatMessage(company, phone, {
+                    text: "Session terminée",
+                    is_bot: true,
+                    is_admin: false,
+                    date: new Date(),
+                    is_read: false,
+                    chat_status: bot_enum_1.ChatStatus.END,
+                    scenario_name: chat_model_1.sessions.get(phone).get(company).scenario_name
+                }, body.io);
                 chat_model_1.sessions.get(phone).delete(company);
             }
         }
@@ -78,14 +74,14 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                     status: broadcastStatus.status,
                     error: broadcastStatus.error_details
                 }, broadcastStatus.phone_number_id);
-                console.dir(result, { depth: null });
+                //console.dir(result, { depth: null });
             }
             else {
                 const result = yield (0, exports.bulkmessageUpdateBroadcastStatus)({
                     response_id: broadcastStatus.id,
                     status: broadcastStatus.status
                 }, broadcastStatus.phone_number_id);
-                console.dir(result, { depth: null });
+                //console.dir(result, { depth: null });
             }
         }
         if (body.entry &&
@@ -102,54 +98,117 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                 data: body.entry[0].changes[0].value.messages[0],
                 id: body.entry[0].changes[0].value.messages[0].id
             };
-            const token = (yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
-            const status = yield (0, exports.markMessageAsRead)(waResponse.id, waResponse.phone_number_id, token);
+            // MARK MESSAGE AS READ
+            const credentials = yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+            if (credentials)
+                yield (0, exports.markMessageAsRead)(waResponse.id, waResponse.phone_number_id, credentials.token);
+            // STOP BOT
+            const chats = yield companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
+            if (chats &&
+                chats.chat_messages &&
+                chats.chat_messages.length > 0) {
+                const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
+                if (lastAdminChatMessage) {
+                    const dateLastMessage = new Date(lastAdminChatMessage.date);
+                    const currentDate = new Date();
+                    const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
+                    const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
+                    /*if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
+                        const message: string = getContentWhatsappMessage(waResponse);
+                        await companyChatsRepository.addChatMessage(
+                            waResponse.phone_number_id,
+                            waResponse.phone_number,
+                            {
+                                text: message,
+                                is_bot: false,
+                                is_admin: false,
+                                date: new Date(),
+                                is_read: false,
+                                chat_status: ChatStatus.PENDING
+                            },
+                            body.io
+                        );
+                        sessions.clear();
+                        return false
+                    }*/
+                }
+            }
+            // LOYALTY PROGRAM REQUEST
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                 //console.log("LOYATY PROGRAM: ", waResponse.data.text.body);
             }
             else if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Tombola: ")) {
             }
             else {
+                // COMMING FROM TEMPLATE BUTTON
                 if (waResponse.type === "button") {
                     if (!chat_model_1.sessions.has(waResponse.phone_number))
                         chat_model_1.sessions.delete(waResponse.phone_number);
                 }
-                const activeScenario = yield scenarioRepository.getScenarioByPhoneNumberId(waResponse.phone_number_id);
-                if (activeScenario.times !== undefined && activeScenario.times > 0) {
-                    if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, activeScenario.users, activeScenario.times)) {
-                        //const token = (await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id)).token;
-                        yield (0, exports.forbiddenUserResponse)({
-                            recipientPhone: waResponse.phone_number,
-                            message: "L'envoie de votre crédit est en cours de traitement\nVous n'êtes plus autorisé à participer."
-                        }, waResponse.phone_number_id, token);
-                        return false;
-                    }
-                    else {
-                        if (!chat_model_1.sessions.has(waResponse.phone_number)) {
-                            const conversation = yield newConversation(waResponse.phone_number_id);
+                if (!chat_model_1.sessions.has(waResponse.phone_number)) {
+                    const conversation = yield (0, exports.getSuitableScenario)(waResponse);
+                    if (conversation) {
+                        if (conversation.times !== undefined && conversation.times > 0) {
+                            if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
+                                yield (0, exports.forbiddenUserResponse)({
+                                    recipientPhone: waResponse.phone_number,
+                                    message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
+                                }, waResponse.phone_number_id, conversation.token);
+                                return false;
+                            }
+                            else {
+                                const companiesChats = new Map();
+                                companiesChats.set(waResponse.phone_number_id, conversation);
+                                chat_model_1.sessions.set(waResponse.phone_number, companiesChats);
+                            }
+                        }
+                        else {
                             const companiesChats = new Map();
                             companiesChats.set(waResponse.phone_number_id, conversation);
                             chat_model_1.sessions.set(waResponse.phone_number, companiesChats);
                         }
-                        else if (!chat_model_1.sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                            const conversation = yield newConversation(waResponse.phone_number_id);
+                    }
+                    else {
+                        const companyCredentials = yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+                        if (companyCredentials === null || companyCredentials === void 0 ? void 0 : companyCredentials.token) {
+                            yield (0, exports.forbiddenUserResponse)({
+                                recipientPhone: waResponse.phone_number,
+                                message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                            }, waResponse.phone_number_id, companyCredentials.token);
+                        }
+                        return false;
+                    }
+                }
+                else if (!chat_model_1.sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
+                    const conversation = yield (0, exports.getSuitableScenario)(waResponse);
+                    if (conversation) {
+                        if (conversation.times !== undefined && conversation.times > 0) {
+                            if (!scenarioRepository.isAuthorizedUser(waResponse.phone_number, conversation.users, conversation.times)) {
+                                yield (0, exports.forbiddenUserResponse)({
+                                    recipientPhone: waResponse.phone_number,
+                                    message: `Vous avez déjà participez ${conversation.times} fois à la campagne.\nVous n'êtes plus autorisé à participer.`
+                                }, waResponse.phone_number_id, conversation.token);
+                                return false;
+                            }
+                            else {
+                                chat_model_1.sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
+                            }
+                        }
+                        else {
                             chat_model_1.sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
                         }
                     }
-                }
-                else {
-                    if (!chat_model_1.sessions.has(waResponse.phone_number)) {
-                        const conversation = yield newConversation(waResponse.phone_number_id);
-                        const companiesChats = new Map();
-                        companiesChats.set(waResponse.phone_number_id, conversation);
-                        chat_model_1.sessions.set(waResponse.phone_number, companiesChats);
-                    }
-                    else if (!chat_model_1.sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                        const conversation = yield newConversation(waResponse.phone_number_id);
-                        chat_model_1.sessions.get(waResponse.phone_number).set(waResponse.phone_number_id, conversation);
+                    else {
+                        const companyCredentials = yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+                        yield (0, exports.forbiddenUserResponse)({
+                            recipientPhone: waResponse.phone_number,
+                            message: `Mot clé incorrect, vous ne disposez pas du bon mot clé pour participer à cette campagne.`
+                        }, waResponse.phone_number_id, companyCredentials.token);
+                        return false;
                     }
                 }
             }
+            console.log(waResponse.data);
             return waResponse;
         }
         return false;
@@ -157,6 +216,46 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
     return false;
 });
 exports.getWhatsappResponse = getWhatsappResponse;
+const getSuitableScenario = (waResponse) => __awaiter(void 0, void 0, void 0, function* () {
+    let message = '';
+    if (waResponse.type === "text") {
+        message = waResponse.data.text.body.trim();
+    }
+    else if (waResponse.type === "button") {
+        message = waResponse.data.button.text.trim();
+    }
+    else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+        message = waResponse.data.interactive.button_reply.title;
+    }
+    else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
+        message = waResponse.data.interactive.list_reply.title;
+    }
+    const companyScenarios = yield scenarioRepository.getCompanyScenarios(waResponse.phone_number_id);
+    const companyCredentials = yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
+    const chats = [];
+    for (let scen of companyScenarios) {
+        if (scen === null || scen === void 0 ? void 0 : scen.keywords) {
+            const keywords = scen === null || scen === void 0 ? void 0 : scen.keywords.map(keyword => keyword.trim().toLocaleLowerCase());
+            console.log("---------------------", keywords, message.trim().toLocaleLowerCase(), "-------------------");
+            if (keywords.includes(message.trim().toLocaleLowerCase())) {
+                return {
+                    scenario: scen.description,
+                    chats: chats,
+                    timeout: new Date(),
+                    token: companyCredentials.token,
+                    company: scen.company,
+                    report_into: scen === null || scen === void 0 ? void 0 : scen.report_into,
+                    last_message: scen === null || scen === void 0 ? void 0 : scen.last_message,
+                    times: scen.times,
+                    users: scen === null || scen === void 0 ? void 0 : scen.users,
+                    scenario_name: scen.title
+                };
+            }
+        }
+    }
+    return false;
+});
+exports.getSuitableScenario = getSuitableScenario;
 const forbiddenUserResponse = (data, phone_number_id, token) => __awaiter(void 0, void 0, void 0, function* () {
     (0, exports.sendWhatsappMessage)(phone_number_id, token, (0, exports.textMessage)(data));
 });
@@ -296,15 +395,6 @@ const catalogMessage = (data) => {
     };
 };
 exports.catalogMessage = catalogMessage;
-const getQuestionResponse = (messageResponse, questions) => __awaiter(void 0, void 0, void 0, function* () {
-    const question = questions[0];
-    if (messageResponse.type === question.responseType) {
-        if (messageResponse.type === "text") {
-            if (questions.length > 1) { }
-        }
-    }
-});
-exports.getQuestionResponse = getQuestionResponse;
 const askQuestion = (recipientPhone, question) => {
     if (question.responseType === "text") {
         return (0, exports.textMessage)({ recipientPhone, message: question.label });
@@ -348,25 +438,26 @@ const saveQuestion = (question) => {
     }
 };
 exports.saveQuestion = saveQuestion;
-const chatToString = (chats, recipientPhone, username, phoneNumberId = '', company = '') => __awaiter(void 0, void 0, void 0, function* () {
+const chatToString = (chats, recipientPhone, username, phoneNumberId = '', company = '', report_into = '') => __awaiter(void 0, void 0, void 0, function* () {
     let text = `Merci *${username}* pour cet échange, veuillez trouver ci-dessous le résumé de nos échanges.\n\n`;
     // Fete des meres
-    if (phoneNumberId.trim() === "299462959914851") {
-        text += `Nous tenons à vous remercier pour votre confiance et votre fidélité. C'est grâce à vous que nous pouvons continuer à servir notre communauté avec dévouement et engagement. Nous vous souhaitons à vous et à vos familles une merveilleuse fête des mères, pleine d'amour, de bonheur et de beaux souvenirs.\n\nVous recevrez 1000 frs de crédit téléphonique sous 24H.\n\nFaites participer vos proches en leurs envoyant le message suivant.`;
+    if (report_into) {
+        text += report_into;
+        // text += `Nous tenons à vous remercier pour votre confiance et votre fidélité. C'est grâce à vous que nous pouvons continuer à servir notre communauté avec dévouement et engagement. Nous vous souhaitons à vous et à vos familles une merveilleuse fête des mères, pleine d'amour, de bonheur et de beaux souvenirs.\n\nVous recevrez 1000 frs de crédit téléphonique sous 24H.\n\nFaites participer vos proches en leurs envoyant le message suivant.`;
     }
     else {
-        for (let chat of chats) {
-            if (!chat.send)
-                chat.send = ``;
-            text += `*${company}*: ${chat.send}\n*${username}*: ${chat.received}\n\n`;
-        }
-        // Ketourah
+        /* Ketourah
         if (phoneNumberId.trim() === "100609346426084") {
             text += `Cliquez sur le lien ci-dessous pour choisir une date et une plage horaire pour vos soins ou votre consultation.`;
-        }
+        }*/
+    }
+    for (let chat of chats) {
+        if (!chat.send)
+            chat.send = ``;
+        text += `*${company}*: ${chat.send}\n*${username}*: ${chat.received}\n\n`;
     }
     // const urlRegex = /(https?:\/\/[^\s]+)/g;
-    const isAdded = yield scenarioRepository.updateUser(phoneNumberId, recipientPhone, username);
+    yield scenarioRepository.updateUser(phoneNumberId, recipientPhone, username);
     return {
         messaging_product: "whatsapp",
         to: recipientPhone,
@@ -608,4 +699,19 @@ const sendProductsTemplate = (phone_number, phone_number_id, token, name, action
     });
 });
 exports.sendProductsTemplate = sendProductsTemplate;
+const getContentWhatsappMessage = (waResponse) => {
+    if (waResponse.type === bot_enum_1.TypeWhatsappMessage.INTERACTIVE) {
+        if (waResponse.data.interactive.type === bot_enum_1.TypeWhatsappMessage.BUTTON_REPLY) {
+            return waResponse.data.interactive.button_reply.title;
+        }
+        else {
+            return waResponse.data.interactive.list_reply.title;
+        }
+    }
+    else if (waResponse.type === bot_enum_1.TypeWhatsappMessage.TEXT) {
+        return waResponse.data.text.body;
+    }
+    return '';
+};
+exports.getContentWhatsappMessage = getContentWhatsappMessage;
 //# sourceMappingURL=whatsapp-method.js.map
