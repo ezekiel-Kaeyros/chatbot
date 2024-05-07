@@ -35,7 +35,7 @@ router.get(
     scenarioService.getScenario
 );
 
-router.get(
+router.delete(
     '/delete/:id',
     scenarioService.deleteScenario
 );

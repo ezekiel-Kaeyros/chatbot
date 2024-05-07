@@ -14,3 +14,11 @@ export enum TypeWhatsappMessage {
     LIST_REPLY = 'list_reply',
     INTERACTIVE = 'interactive'
 }
+
+export enum ChatStatus {
+    START = "start",
+    PENDING = "pending",
+    END = "end",
+    OPEN = "open",
+    EXPIRED = "expired"
+}

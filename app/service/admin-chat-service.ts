@@ -6,10 +6,11 @@ import { ScenarioRespository } from "../repository/scenario-repository";
 import { Request, Response } from 'express';
 import { sessions } from "../models/chat-model";
 import { ChatMessageModel } from "../models/company-chats-model";
-import { sendWhatsappMessage, textMessage } from "../utility/whatsapp-method";
+import { chatSessionTimeout, sendWhatsappMessage, textMessage } from "../utility/whatsapp-method";
 import { plainToClass } from "class-transformer";
 import { ChatInput } from "../models/dto/chat-input";
 import { AppValidationError } from "../utility/errors";
+import { ChatStatus } from "../enums/bot-enum";
 
 const companyChatsRepository: CompanyChatRespository = new CompanyChatRespository();
 const scenariorepository: ScenarioRespository = new ScenarioRespository();
@@ -25,11 +26,11 @@ export class AdminChatsService {
 
     async sendChatMessage(req: any, res: Response) {
         try {
-            const input = plainToClass(ChatInput, req.body);
+            /*const input = plainToClass(ChatInput, req.body);
             const error = await AppValidationError(input);
             if (error) return res.status(404).send(error);
 
-            //const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
+            const token = sessions?.get(input.phone_number)?.get(input.phone_number_id).token;
             let token: string;
             if (!sessions.has(input.phone_number)) {
                 return res.status(400).send("Il n'existe aucune conversation ouverte avec ce client");
@@ -47,7 +48,7 @@ export class AdminChatsService {
                     message: input.message
                 }));
             }
-            return res.status(200).send(data);
+            return res.status(200).send(data);*/
         } catch (error) {
             console.log(error);
             return res.status(500).send({error: error?.message});
@@ -70,9 +71,33 @@ export class AdminChatsService {
             if (!phone_number_id) return res.status(403).send("please provide company phone number id");
 
             const data = await companyChatsRepository.getCompanyChatsByPhoneNumberId(phone_number_id);
-            const activeScenario = await scenariorepository.getScenarioByPhoneNumberId(phone_number_id);
+            const time = Date.now();
+            const conversations = data.conversations.sort((userA, userB) => {
+                const aTime = new Date(userA.chat_messages[userA.chat_messages.length-1].date).getTime();
+                const bTime = new Date(userB.chat_messages[userB.chat_messages.length-1].date).getTime();
+                const aDelta = Math.abs(time - aTime);
+                const bDelta = Math.abs(time - bTime);
+                return (aDelta - bDelta);
+            });
+
+            for (let conv of conversations) {
+                if (conv.chat_messages.length > 0) {
+                    const chats = conv.chat_messages.reverse();
+                    const index = chats.findIndex(
+                        message => message.is_bot === false
+                    );
+                    const timeLeft = chatSessionTimeout(chats[index].date, new Date())/60;
+                    if (timeLeft < 24) {
+                        if (chats[0].chat_status !== ChatStatus.PENDING) chats[0].chat_status = ChatStatus.OPEN;
+                    } else {
+                        chats[0].chat_status = ChatStatus.EXPIRED;
+                    }
+                    conv.chat_messages = chats.reverse();
+                }
+            }
+            data.conversations = conversations;
             
-            return res.status(200).send({ data, filter_labels: activeScenario.interactive_labels });
+            return res.status(200).send(data);
         } catch (error) {
             console.log(error);
             return res.status(500).send({ error: error?.message });

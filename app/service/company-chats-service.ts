@@ -3,7 +3,6 @@ import { autoInjectable } from "tsyringe";
 import { ErrorResponse, SuccessResponse } from "../utility/response";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { Request, Response } from 'express';
-import { sendChat } from "../utility/chatbot-inmemory-process";
 import { SendWAButtonModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
 import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendTemplateOfProductsCatalog, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
 import { sessions } from "../models/chat-model";
@@ -11,12 +10,11 @@ import { ClientPointModel } from "../models/client-point-model";
 import { TombolaProductModel } from "../models/tombola-product-model";
 import { CompanyChatRespository } from "../repository/company-chat-repository";
 import { ResponseModel } from "../models/dto/scenario-input";
-import { ScenarioRespository } from "../repository/scenario-repository";
 import { getCatalogProducts } from "../utility/meta-request";
+import { ChatStatus } from "../enums/bot-enum";
 
 const companyChatsRepository = new CompanyChatRespository();
 const credentialsRepository = new CredentialsRepository();
-const scenarioRepository = new ScenarioRespository();
 
 @autoInjectable()
 export class CompanyChatsService {
@@ -53,16 +51,13 @@ export class CompanyChatsService {
     async sendMessage(req: any, res: Response) {
         try {
             const body = {...req.body, io: req.io} as any;
-            // await sendChat(body);
-            // return res.status(200).send();
 
             let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel;
             if (await getWhatsappResponse(body)) {
                 const waResponse = await getWhatsappResponse(body) as WAResponseModel;
 
-                //const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
                 const token = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).token;
-                //const token = credentials.token;
+                
                 if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
     
                     const programName = getPrgramName(waResponse.data.text.body);
@@ -147,7 +142,10 @@ export class CompanyChatsService {
                                             text: waResponse.data.button.text,
                                             is_bot: false,
                                             is_admin: false,
-                                            date: new Date()
+                                            date: new Date(),
+                                            is_read: false,
+                                            chat_status: ChatStatus.START,
+                                            scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                         }, req.io);
                                 }
                             } else {
@@ -169,7 +167,10 @@ export class CompanyChatsService {
                                             text: waResponse.data.text.body,
                                             is_bot: false,
                                             is_admin: false,
-                                            date: new Date()
+                                            date: new Date(),
+                                            is_read: false,
+                                            chat_status: ChatStatus.START,
+                                            scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                         }, req.io);
                                 }
                             }
@@ -181,7 +182,7 @@ export class CompanyChatsService {
                         } else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
                             const label = waResponse.data.interactive.button_reply.title;
                             sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
-                            // console.log("TEST")
+                            
                             // Save chat
                             await companyChatsRepository.addChatMessage(
                                 waResponse.phone_number_id,
@@ -190,7 +191,10 @@ export class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.START,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
     
                             data = askQuestion(
@@ -209,7 +213,10 @@ export class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.START,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
     
                             data = askQuestion(
@@ -255,7 +262,10 @@ export class CompanyChatsService {
                                     text: `\n\n*Command*\n${order}`,
                                     is_bot: true,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.START,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
 
                             data = askQuestion(
@@ -280,7 +290,10 @@ export class CompanyChatsService {
                                     text: waResponse.data.text.body,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.PENDING,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
 
                             const index = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(
@@ -303,7 +316,7 @@ export class CompanyChatsService {
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
-                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                
                                 // Save chat
                                 await companyChatsRepository.addChatMessage(
                                     waResponse.phone_number_id,
@@ -312,8 +325,12 @@ export class CompanyChatsService {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: ChatStatus.END,
+                                        scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                     }, req.io);
+                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             }
                         } else {
                             data = askQuestion(
@@ -337,7 +354,10 @@ export class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.PENDING,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io
                             );
         
@@ -364,7 +384,7 @@ export class CompanyChatsService {
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
-                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                
                                 // Save chat
                                 await companyChatsRepository.addChatMessage(
                                     waResponse.phone_number_id,
@@ -373,8 +393,12 @@ export class CompanyChatsService {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: ChatStatus.END,
+                                        scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                     }, req.io);
+                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             }
                         } else {
                             data = askQuestion(
@@ -397,7 +421,10 @@ export class CompanyChatsService {
                                     text: label,
                                     is_bot: false,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.PENDING,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
         
                             const currentLabel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
@@ -423,7 +450,7 @@ export class CompanyChatsService {
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
                                     sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                                 );
-                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                                
                                 // Save chat
                                 await companyChatsRepository.addChatMessage(
                                     waResponse.phone_number_id,
@@ -432,8 +459,12 @@ export class CompanyChatsService {
                                         text: data.text.body,
                                         is_bot: true,
                                         is_admin: false,
-                                        date: new Date()
+                                        date: new Date(),
+                                        is_read: false,
+                                        chat_status: ChatStatus.END,
+                                        scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                     }, req.io);
+                                sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                             }
                         } else {
                             data = askQuestion(
@@ -484,7 +515,6 @@ export class CompanyChatsService {
                                 sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company,
                                 sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into
                             );
-                            sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
 
                             // Save chat
                             await companyChatsRepository.addChatMessage(
@@ -494,8 +524,12 @@ export class CompanyChatsService {
                                     text: `\n\n*Command*\n${order}`,
                                     is_bot: true,
                                     is_admin: false,
-                                    date: new Date()
+                                    date: new Date(),
+                                    is_read: false,
+                                    chat_status: ChatStatus.END,
+                                    scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                                 }, req.io);
+                            sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
                         } else {
                             data = askQuestion(
                                 waResponse.phone_number,
@@ -520,14 +554,16 @@ export class CompanyChatsService {
                                 text: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend,
                                 is_bot: true,
                                 is_admin: false,
-                                date: new Date()
+                                date: new Date(),
+                                is_read: false,
+                                chat_status: ChatStatus.PENDING,
+                                scenario_name: sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
                             }, req.io);
                     } else {
                         if (last_message) {
                             await forbiddenUserResponse({
                                 recipientPhone: waResponse.phone_number,
                                 message: last_message
-                                // message: `Participez à la fêtes des mères et recevez 1000 frs de crédit de communication en cliquant sur ce lien.\nhttps://wa.me/message/UJBNPI6GLOCTN1`
                             }, waResponse.phone_number_id, token);
                         }
                     }

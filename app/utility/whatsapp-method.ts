@@ -25,26 +25,11 @@ import { RandomDrawInput } from "../models/dto/random-draw-input";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { UpdateBroadcastStatusInput } from "../models/dto/update-broadcast-status-input";
 import { BroadcastStatusModel } from "../models/broadcast-status-model";
-import { TimeToDisableBot, TypeWhatsappMessage } from "../enums/bot-enum";
+import { ChatStatus, TimeToDisableBot, TypeWhatsappMessage } from "../enums/bot-enum";
 
 const companyChatsRepository = new CompanyChatRespository();
 const scenarioRepository = new ScenarioRespository();
 const credentialsRepository = new CredentialsRepository();
-/*
-const newConversation = async (phone_number_id: string) => {
-    const repository = new ScenarioRespository();
-    const scenario = await repository.getScenarioByPhoneNumberId(phone_number_id);
-    const credentialsRepository = new CredentialsRepository();
-    // console.log("SCENARIO:", scenario);
-    const chats: Chat[] = [];
-    return {
-        scenario: scenario.description,
-        chats: chats,
-        timeout: new Date(),
-        token: (await credentialsRepository.getByPhoneNumber(phone_number_id)).token,
-        company: scenario.company
-    };
-};*/
 
 export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|boolean> => {
     console.dir("INCOMMING MESSAGE: ");
@@ -57,6 +42,18 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     recipientPhone: phone,
                     message: "Session terminée"
                 }, company, token);
+                await companyChatsRepository.addChatMessage(
+                    company,
+                    phone,
+                    {
+                        text: "Session terminée",
+                        is_bot: true,
+                        is_admin: false,
+                        date: new Date(),
+                        is_read: false,
+                        chat_status: ChatStatus.END,
+                        scenario_name: sessions.get(phone).get(company).scenario_name
+                    }, body.io);
                 sessions.get(phone).delete(company);
             }
         }
@@ -139,7 +136,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
                     const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
                     
-                    if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
+                    /*if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
                         const message: string = getContentWhatsappMessage(waResponse);
                         await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
@@ -148,13 +145,15 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                                 text: message,
                                 is_bot: false,
                                 is_admin: false,
-                                date: new Date()
+                                date: new Date(),
+                                is_read: false,
+                                chat_status: ChatStatus.PENDING
                             },
                             body.io
                         );
                         sessions.clear();
                         return false
-                    }
+                    }*/
                 }
             }
 
@@ -165,10 +164,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
 
             } else {
 
-                if (waResponse.type === "text") {
-                    
-                }
-
+                // COMMING FROM TEMPLATE BUTTON
                 if (waResponse.type === "button") {
                     if (!sessions.has(waResponse.phone_number)) sessions.delete(waResponse.phone_number);
                 }
@@ -268,7 +264,8 @@ export const getSuitableScenario = async (waResponse: WAResponseModel) => {
                     report_into: scen?.report_into,
                     last_message: scen?.last_message,
                     times: scen.times,
-                    users: scen?.users
+                    users: scen?.users,
+                    scenario_name: scen.title
                 };
             }
         }

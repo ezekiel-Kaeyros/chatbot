@@ -121,10 +121,21 @@ export class ScenarioService {
             const input = plainToClass(ScenarioInput, req.body!);
             const error = await AppValidationError(input);
             if (error) return ErrorResponse(404, error);
+
             const scenarioId = req.params?.id as string;
             if (!scenarioId) return res.status(403).send("id must be provided!");
-            
             input._id = scenarioId;
+
+            await removeEmptyArray(input.description);
+            await longLabel(input.description);
+            if (await duplicatedLabel(input.description)) throw new Error("Duplicate questions or answers, or check your products template if threre is!");
+
+            const badNbr =  await parseScenario(input.description);
+            if (badNbr) return res.status(400).send("Number of responses not supported!");
+            await identifyScenario(input.description);
+            const filterLabels = await extractLabelsOfInteractiveResponses(input.description);
+            if (filterLabels.length !== 0) input.interactive_labels = filterLabels;
+
             const data = await repository.updateScenario(input);
 
             return res

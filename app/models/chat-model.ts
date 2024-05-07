@@ -17,7 +17,8 @@ export type Conversation = {
     report_into?: string;
     last_message?: string;
     times?: number;
-    users?: User[]
+    users?: User[];
+    scenario_name?: string;
 };
 // Map<phone, Map<company, chat>>
 export const sessions = new Map<string, Map<string, Conversation>>();

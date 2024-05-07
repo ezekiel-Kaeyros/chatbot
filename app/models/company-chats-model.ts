@@ -5,8 +5,10 @@ export type ChatMessageModel = {
     text: string;
     is_bot: boolean;
     is_admin: boolean;
-    date?: Date;
-    is_read?: boolean;
+    date: Date;
+    is_read: boolean;
+    chat_status: "start" | "pending" | "end" | "open" | "expired";
+    scenario_name: string;
 };
 
 export type ChatsConversationModel = {
