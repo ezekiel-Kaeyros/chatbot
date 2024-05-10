@@ -33,7 +33,7 @@ const credentialsRepository = new CredentialsRepository();
 
 export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|boolean> => {
     console.dir("INCOMMING MESSAGE: ");
-    console.dir(body, { depth: null });
+    //console.dir(body, { depth: null });
     for (let [phone, session] of sessions) {
         for (let [company, conversat] of session) {
             if (chatSessionTimeout(conversat.timeout, new Date()) > 10) {
@@ -60,46 +60,46 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
     }
 
     if (body.object) {
-        if (
-            body.entry &&
-            body.entry[0].changes &&
-            body.entry[0].changes[0] &&
-            body.entry[0].changes[0].value.statuses &&
-            body.entry[0].changes[0].value.statuses[0]
-        ) {
-            const broadcastStatus: BroadcastStatusModel = {
-                display_phone_number: body.entry[0].changes[0].value.metadata.display_phone_number,
-                phone_number_id: body.entry[0].changes[0].value.metadata.phone_number_id,
-                id: body.entry[0].changes[0].value.statuses[0].id,
-                status: body.entry[0].changes[0].value.statuses[0].status,
-                timestamp: body.entry[0].changes[0].value.statuses[0].timestamp,
-                recipient_id: body.entry[0].changes[0].value.statuses[0].recipient_id,
-            };
-            if (
-                body.entry[0].changes[0].value.statuses[0].errors &&
-                body.entry[0].changes[0].value.statuses[0].errors[0]
-            ) {
-                console.log("TEMPLATE RESPONSE WITH ERRORS");
-                broadcastStatus.error_code = body.entry[0].changes[0].value.statuses[0].errors[0].code;
-                broadcastStatus.error_title = body.entry[0].changes[0].value.statuses[0].errors[0].title;
-                broadcastStatus.error_message = body.entry[0].changes[0].value.statuses[0].errors[0].message;
-                broadcastStatus.error_details = body.entry[0].changes[0].value.statuses[0].errors[0].error_data.details;
-                broadcastStatus.error_support_url = body.entry[0].changes[0].value.statuses[0].errors[0].href;
+        // if (
+        //     body.entry &&
+        //     body.entry[0].changes &&
+        //     body.entry[0].changes[0] &&
+        //     body.entry[0].changes[0].value.statuses &&
+        //     body.entry[0].changes[0].value.statuses[0]
+        // ) {
+        //     const broadcastStatus: BroadcastStatusModel = {
+        //         display_phone_number: body.entry[0].changes[0].value.metadata.display_phone_number,
+        //         phone_number_id: body.entry[0].changes[0].value.metadata.phone_number_id,
+        //         id: body.entry[0].changes[0].value.statuses[0].id,
+        //         status: body.entry[0].changes[0].value.statuses[0].status,
+        //         timestamp: body.entry[0].changes[0].value.statuses[0].timestamp,
+        //         recipient_id: body.entry[0].changes[0].value.statuses[0].recipient_id,
+        //     };
+        //     if (
+        //         body.entry[0].changes[0].value.statuses[0].errors &&
+        //         body.entry[0].changes[0].value.statuses[0].errors[0]
+        //     ) {
+        //         console.log("TEMPLATE RESPONSE WITH ERRORS");
+        //         broadcastStatus.error_code = body.entry[0].changes[0].value.statuses[0].errors[0].code;
+        //         broadcastStatus.error_title = body.entry[0].changes[0].value.statuses[0].errors[0].title;
+        //         broadcastStatus.error_message = body.entry[0].changes[0].value.statuses[0].errors[0].message;
+        //         broadcastStatus.error_details = body.entry[0].changes[0].value.statuses[0].errors[0].error_data.details;
+        //         broadcastStatus.error_support_url = body.entry[0].changes[0].value.statuses[0].errors[0].href;
 
-                const result = await bulkmessageUpdateBroadcastStatus({
-                    response_id: broadcastStatus.id,
-                    status: broadcastStatus.status,
-                    error: broadcastStatus.error_details
-                }, broadcastStatus.phone_number_id);
-                //console.dir(result, { depth: null });
-            } else {
-                const result = await bulkmessageUpdateBroadcastStatus({
-                    response_id: broadcastStatus.id,
-                    status: broadcastStatus.status
-                }, broadcastStatus.phone_number_id);
-                //console.dir(result, { depth: null });
-            }
-        }
+        //         const result = await bulkmessageUpdateBroadcastStatus({
+        //             response_id: broadcastStatus.id,
+        //             status: broadcastStatus.status,
+        //             error: broadcastStatus.error_details
+        //         }, broadcastStatus.phone_number_id);
+        //         //console.dir(result, { depth: null });
+        //     } else {
+        //         const result = await bulkmessageUpdateBroadcastStatus({
+        //             response_id: broadcastStatus.id,
+        //             status: broadcastStatus.status
+        //         }, broadcastStatus.phone_number_id);
+        //         //console.dir(result, { depth: null });
+        //     }
+        // }
 
         if (
             body.entry &&
@@ -280,7 +280,7 @@ export const forbiddenUserResponse = async (data: WAText, phone_number_id: strin
 export const sendWhatsappMessage = async (
     phone_number_id: string,
     token: string,
-    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel
+    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel|SendWAImageModel
 ) => {
     const { status } = await axios({
         method: "POST",
@@ -446,11 +446,18 @@ export const askQuestion = (recipientPhone: string, question: QuestionModel) => 
         const name = question.responses[0].label;
         const action = question.responses[0].template_action;
         return productsTemplateMessage({ recipientPhone, name, action  });
+    } else if (question.responseType === "image") {
+        const data: WAImage = {
+            recipientPhone, 
+            link: question.link
+        }
+        return imageMessage(data);
     }
 };
 
 export const saveQuestion = (question: QuestionModel) => {
     if (question.responseType === "text") return question.label;
+    if (question.responseType === "image") return question.link;
     else {
         let text = `${question.label}`;
         question.responses.forEach(resp => text + `\n${resp.label}`);

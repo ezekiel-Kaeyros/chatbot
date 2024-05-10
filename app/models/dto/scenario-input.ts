@@ -24,8 +24,9 @@ export type ResponseModel = {
 export type QuestionModel = {
     label: string;
     responses?: ResponseModel[];
-    responseType?: "text" | "button" | "list" | "catalog" | "template";
+    responseType?: "text" | "button" | "list" | "catalog" | "template" | "image";
     id?: string;
+    link?: string;
 };
 
 export class ScenarioInput {

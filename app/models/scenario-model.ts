@@ -25,7 +25,7 @@ type ResponseModel = {
 type QuestionModel = {
     label: string;
     responses?: ResponseModel[];
-    responseType?: "text" | "button" | "list" | "catalog" | "template";
+    responseType?: "text" | "button" | "list" | "catalog" | "template" | "image";
     id?: string;
 };
 

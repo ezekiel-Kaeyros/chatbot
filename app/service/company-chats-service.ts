@@ -3,7 +3,7 @@ import { autoInjectable } from "tsyringe";
 import { ErrorResponse, SuccessResponse } from "../utility/response";
 import { CredentialsRepository } from "../repository/credentials-repository";
 import { Request, Response } from 'express';
-import { SendWAButtonModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
+import { SendWAButtonModel, SendWAImageModel, SendWAListModel, SendWAProductsTemplateModel, SendWATextModel, WAResponseModel } from "../models/whatsapp-message-type";
 import { askQuestion, chatToString, forbiddenUserResponse, getPrgramName, getTombolaName, getWhatsappResponse, loyaltyProgramSavePoint, saveQuestion, sendTemplateMessage, sendTemplateOfProductsCatalog, sendWhatsappMessage, textMessage, tombolaSaveRandomDraw } from "../utility/whatsapp-method";
 import { sessions } from "../models/chat-model";
 import { ClientPointModel } from "../models/client-point-model";
@@ -52,7 +52,7 @@ export class CompanyChatsService {
         try {
             const body = {...req.body, io: req.io} as any;
 
-            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel;
+            let data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel|SendWAImageModel;
             if (await getWhatsappResponse(body)) {
                 const waResponse = await getWhatsappResponse(body) as WAResponseModel;
 
@@ -432,7 +432,9 @@ export class CompanyChatsService {
                                 quest => quest.label === currentLabel
                             );
                             const response: ResponseModel = sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index]
-                                                                    .responses.find(resp => resp.id === id);
+                                        .responses.find(resp => resp.id === id);
+
+                                        
                             if (response.questions) {
                                 data = askQuestion(
                                     waResponse.phone_number,

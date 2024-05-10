@@ -25,7 +25,7 @@ const scenarioRepository = new scenario_repository_1.ScenarioRespository();
 const credentialsRepository = new credentials_repository_1.CredentialsRepository();
 const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function* () {
     console.dir("INCOMMING MESSAGE: ");
-    console.dir(body, { depth: null });
+    //console.dir(body, { depth: null });
     for (let [phone, session] of chat_model_1.sessions) {
         for (let [company, conversat] of session) {
             if ((0, exports.chatSessionTimeout)(conversat.timeout, new Date()) > 10) {
@@ -48,42 +48,45 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
         }
     }
     if (body.object) {
-        if (body.entry &&
-            body.entry[0].changes &&
-            body.entry[0].changes[0] &&
-            body.entry[0].changes[0].value.statuses &&
-            body.entry[0].changes[0].value.statuses[0]) {
-            const broadcastStatus = {
-                display_phone_number: body.entry[0].changes[0].value.metadata.display_phone_number,
-                phone_number_id: body.entry[0].changes[0].value.metadata.phone_number_id,
-                id: body.entry[0].changes[0].value.statuses[0].id,
-                status: body.entry[0].changes[0].value.statuses[0].status,
-                timestamp: body.entry[0].changes[0].value.statuses[0].timestamp,
-                recipient_id: body.entry[0].changes[0].value.statuses[0].recipient_id,
-            };
-            if (body.entry[0].changes[0].value.statuses[0].errors &&
-                body.entry[0].changes[0].value.statuses[0].errors[0]) {
-                console.log("TEMPLATE RESPONSE WITH ERRORS");
-                broadcastStatus.error_code = body.entry[0].changes[0].value.statuses[0].errors[0].code;
-                broadcastStatus.error_title = body.entry[0].changes[0].value.statuses[0].errors[0].title;
-                broadcastStatus.error_message = body.entry[0].changes[0].value.statuses[0].errors[0].message;
-                broadcastStatus.error_details = body.entry[0].changes[0].value.statuses[0].errors[0].error_data.details;
-                broadcastStatus.error_support_url = body.entry[0].changes[0].value.statuses[0].errors[0].href;
-                const result = yield (0, exports.bulkmessageUpdateBroadcastStatus)({
-                    response_id: broadcastStatus.id,
-                    status: broadcastStatus.status,
-                    error: broadcastStatus.error_details
-                }, broadcastStatus.phone_number_id);
-                //console.dir(result, { depth: null });
-            }
-            else {
-                const result = yield (0, exports.bulkmessageUpdateBroadcastStatus)({
-                    response_id: broadcastStatus.id,
-                    status: broadcastStatus.status
-                }, broadcastStatus.phone_number_id);
-                //console.dir(result, { depth: null });
-            }
-        }
+        // if (
+        //     body.entry &&
+        //     body.entry[0].changes &&
+        //     body.entry[0].changes[0] &&
+        //     body.entry[0].changes[0].value.statuses &&
+        //     body.entry[0].changes[0].value.statuses[0]
+        // ) {
+        //     const broadcastStatus: BroadcastStatusModel = {
+        //         display_phone_number: body.entry[0].changes[0].value.metadata.display_phone_number,
+        //         phone_number_id: body.entry[0].changes[0].value.metadata.phone_number_id,
+        //         id: body.entry[0].changes[0].value.statuses[0].id,
+        //         status: body.entry[0].changes[0].value.statuses[0].status,
+        //         timestamp: body.entry[0].changes[0].value.statuses[0].timestamp,
+        //         recipient_id: body.entry[0].changes[0].value.statuses[0].recipient_id,
+        //     };
+        //     if (
+        //         body.entry[0].changes[0].value.statuses[0].errors &&
+        //         body.entry[0].changes[0].value.statuses[0].errors[0]
+        //     ) {
+        //         console.log("TEMPLATE RESPONSE WITH ERRORS");
+        //         broadcastStatus.error_code = body.entry[0].changes[0].value.statuses[0].errors[0].code;
+        //         broadcastStatus.error_title = body.entry[0].changes[0].value.statuses[0].errors[0].title;
+        //         broadcastStatus.error_message = body.entry[0].changes[0].value.statuses[0].errors[0].message;
+        //         broadcastStatus.error_details = body.entry[0].changes[0].value.statuses[0].errors[0].error_data.details;
+        //         broadcastStatus.error_support_url = body.entry[0].changes[0].value.statuses[0].errors[0].href;
+        //         const result = await bulkmessageUpdateBroadcastStatus({
+        //             response_id: broadcastStatus.id,
+        //             status: broadcastStatus.status,
+        //             error: broadcastStatus.error_details
+        //         }, broadcastStatus.phone_number_id);
+        //         //console.dir(result, { depth: null });
+        //     } else {
+        //         const result = await bulkmessageUpdateBroadcastStatus({
+        //             response_id: broadcastStatus.id,
+        //             status: broadcastStatus.status
+        //         }, broadcastStatus.phone_number_id);
+        //         //console.dir(result, { depth: null });
+        //     }
+        // }
         if (body.entry &&
             body.entry[0].changes &&
             body.entry[0].changes[0] &&
@@ -426,11 +429,20 @@ const askQuestion = (recipientPhone, question) => {
         const action = question.responses[0].template_action;
         return (0, exports.productsTemplateMessage)({ recipientPhone, name, action });
     }
+    else if (question.responseType === "image") {
+        const data = {
+            recipientPhone,
+            link: question.link
+        };
+        return (0, exports.imageMessage)(data);
+    }
 };
 exports.askQuestion = askQuestion;
 const saveQuestion = (question) => {
     if (question.responseType === "text")
         return question.label;
+    if (question.responseType === "image")
+        return question.link;
     else {
         let text = `${question.label}`;
         question.responses.forEach(resp => text + `\n${resp.label}`);
