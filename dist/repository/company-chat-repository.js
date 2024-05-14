@@ -129,14 +129,14 @@ class CompanyChatRespository {
                 }));
                 if (companyChats) {
                     if (companyChats.conversations.some((conversation) => conversation.phone_number === phone_number)) {
-                        res = this.updateConversation(phone_number_id, phone_number, chat_message);
+                        res = yield this.updateConversation(phone_number_id, phone_number, chat_message);
                     }
                     else {
-                        res = this.createConversation(phone_number_id, phone_number, chat_message);
+                        res = yield this.createConversation(phone_number_id, phone_number, chat_message);
                     }
                 }
                 else {
-                    res = this.createCompanyChats(phone_number_id, phone_number, chat_message);
+                    res = yield this.createCompanyChats(phone_number_id, phone_number, chat_message);
                 }
                 io.emit(`message-${phone_number_id}`, { data: res });
                 return res;

@@ -143,20 +143,20 @@ export class CompanyChatRespository {
             (conversation) => conversation.phone_number === phone_number
           )
         ) {
-          res = this.updateConversation(
+          res = await this.updateConversation(
             phone_number_id,
             phone_number,
             chat_message
           );
         } else {
-          res = this.createConversation(
+          res = await this.createConversation(
             phone_number_id,
             phone_number,
             chat_message
           );
         }
       } else {
-        res = this.createCompanyChats(
+        res = await this.createCompanyChats(
           phone_number_id,
           phone_number,
           chat_message
