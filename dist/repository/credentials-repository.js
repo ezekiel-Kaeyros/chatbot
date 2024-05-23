@@ -12,8 +12,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.CredentialsRepository = void 0;
 const credentials_model_1 = require("../models/credentials-model");
 class CredentialsRepository {
-    create({ company, phone_number_id, verify_token, token }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    create(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token }) {
             return credentials_model_1.credentials.create({
                 company,
                 phone_number_id,
@@ -22,8 +22,8 @@ class CredentialsRepository {
             });
         });
     }
-    update({ company, phone_number_id, verify_token, token, _id }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    update(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token, _id }) {
             let existingCredentials = yield credentials_model_1.credentials.findById(_id);
             existingCredentials.company = company;
             existingCredentials.phone_number_id = phone_number_id;
@@ -52,8 +52,8 @@ class CredentialsRepository {
             return credentials_model_1.credentials.findOne({ verify_token });
         });
     }
-    getAll(offset = 0, pages) {
-        return __awaiter(this, void 0, void 0, function* () {
+    getAll() {
+        return __awaiter(this, arguments, void 0, function* (offset = 0, pages) {
             return credentials_model_1.credentials
                 .find()
                 .skip(offset)

@@ -15,7 +15,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.removeEmptyArray = exports.identifyScenario = exports.removeSpecialCharacter = exports.longLabel = exports.duplicatedLabel = exports.extractLabelsOfInteractiveResponses = exports.parseScenario = void 0;
 const axios_1 = __importDefault(require("axios"));
 const message_queue_1 = require("../message-queue");
-const parseScenario = (questions, phone_number_id = "100609346426084") => __awaiter(void 0, void 0, void 0, function* () {
+const parseScenario = (questions_1, ...args_1) => __awaiter(void 0, [questions_1, ...args_1], void 0, function* (questions, phone_number_id = "100609346426084") {
     for (let question of questions) {
         let badNbr;
         if (!question.responses) {
@@ -158,7 +158,7 @@ const identifyScenario = (questions) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.identifyScenario = identifyScenario;
-const identify = (data, path = '') => __awaiter(void 0, void 0, void 0, function* () {
+const identify = (data_1, ...args_2) => __awaiter(void 0, [data_1, ...args_2], void 0, function* (data, path = '') {
     var _a, _b;
     data.id = path + (path ? '_' : '') + (0, exports.removeSpecialCharacter)(data.label);
     if ("questions" in data)

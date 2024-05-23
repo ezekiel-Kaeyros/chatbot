@@ -32,8 +32,8 @@ class CompanyChatRespository {
             return company_chats_model_1.companiesChats.create(companyChats);
         });
     }
-    getAllCompaniesChats(offset = 0, pages) {
-        return __awaiter(this, void 0, void 0, function* () {
+    getAllCompaniesChats() {
+        return __awaiter(this, arguments, void 0, function* (offset = 0, pages) {
             return company_chats_model_1.companiesChats
                 .find()
                 .skip(offset)
@@ -75,8 +75,8 @@ class CompanyChatRespository {
             }
         });
     }
-    updateCompanyChats({ _id, phone_number_id, company, conversations, }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    updateCompanyChats(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ _id, phone_number_id, company, conversations, }) {
             const existingCompanyChats = (yield company_chats_model_1.companiesChats.findById(_id));
             existingCompanyChats.phone_number_id = phone_number_id;
             existingCompanyChats.company = company;

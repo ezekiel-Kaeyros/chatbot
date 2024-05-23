@@ -1,4 +1,7 @@
 "use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const tsyringe_1 = require("tsyringe");
@@ -6,6 +9,7 @@ const scenario_service_1 = require("./service/scenario-service");
 const credentials_service_1 = require("./service/credentials-service");
 const company_chats_service_1 = require("./service/company-chats-service");
 const admin_chat_service_1 = require("./service/admin-chat-service");
+const multerConfig_1 = __importDefault(require("./utility/multerConfig"));
 const router = (0, express_1.Router)();
 const scenarioService = tsyringe_1.container.resolve(scenario_service_1.ScenarioService);
 const credentialsService = tsyringe_1.container.resolve(credentials_service_1.CredentialsService);
@@ -20,6 +24,7 @@ router.get('/getone/:id', scenarioService.getScenario);
 router.delete('/delete/:id', scenarioService.deleteScenario);
 router.post('/active', scenarioService.activeScenario);
 router.get('/scenarios/:phone_number_id', scenarioService.getCompanyScenarios);
+router.post('/scenarios/upload-file', multerConfig_1.default.single('file'), scenarioService.uploadFile);
 // CHATBOT
 router.get('/webhook', companyChatsService.getMessage);
 router.post('/webhook', companyChatsService.sendMessage);

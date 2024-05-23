@@ -13,8 +13,8 @@ exports.ScenarioRespository = void 0;
 const scenario_model_1 = require("../models/scenario-model");
 class ScenarioRespository {
     constructor() { }
-    createScenario({ title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    createScenario(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
             const companyScenariosList = yield this.getCompanyScenarios(phone_number_id);
             for (let scenario of companyScenariosList) {
                 if (title.toLocaleLowerCase().trim() === scenario.title.toLocaleLowerCase().trim())
@@ -42,8 +42,8 @@ class ScenarioRespository {
             });
         });
     }
-    getAllScenarios(offset = 0, pages) {
-        return __awaiter(this, void 0, void 0, function* () {
+    getAllScenarios() {
+        return __awaiter(this, arguments, void 0, function* (offset = 0, pages) {
             return scenario_model_1.scenarios
                 .find()
                 .skip(offset)
@@ -65,8 +65,8 @@ class ScenarioRespository {
             return scenario_model_1.scenarios.find({ phone_number_id });
         });
     }
-    updateScenario({ _id, title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    updateScenario(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ _id, title, phone_number_id, company, description, interactive_labels, times, keywords, company_id, report_into, last_message }) {
             const existingScenario = yield scenario_model_1.scenarios.findById(_id);
             existingScenario.title = title;
             existingScenario.phone_number_id = phone_number_id;
@@ -121,8 +121,8 @@ class ScenarioRespository {
             return true;
         }
     }
-    activeScenario({ phone_number_id, _id }) {
-        return __awaiter(this, void 0, void 0, function* () {
+    activeScenario(_a) {
+        return __awaiter(this, arguments, void 0, function* ({ phone_number_id, _id }) {
             const currentActiveScenario = yield scenario_model_1.scenarios.findOne({ phone_number_id, active: true });
             if (currentActiveScenario) {
                 console.log("if");

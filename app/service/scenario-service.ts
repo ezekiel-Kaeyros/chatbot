@@ -165,4 +165,30 @@ export class ScenarioService {
                 .send({ error: error?.message });
         }
     }
+
+    async uploadFile(req: Request, res: Response) {
+        try {
+            const file = req.file;
+            const phoneNumberID = req.body.phone_number_id;
+            
+            if (!file) {
+              return res.status(400).send('No file uploaded.');
+            }
+          
+            if (!phoneNumberID) {
+              return res.status(400).send('No phoneNumberID provided.');
+            }
+
+            const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+          
+            res.status(200).send({
+                message: 'File uploaded successfully!',
+                fileUrl: fileUrl,
+                phoneNumberID: phoneNumberID
+            });
+        } catch (error) {
+            console.log(error);
+            return res.status(500).send({ error: error?.message });
+        }
+    }
 }

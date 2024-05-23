@@ -80,8 +80,8 @@ let CredentialsService = class CredentialsService {
         });
     }
     deleteCredentials(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const credentialsId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!credentialsId)
@@ -100,8 +100,8 @@ let CredentialsService = class CredentialsService {
         });
     }
     getCredentials(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const credentialsId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!credentialsId)

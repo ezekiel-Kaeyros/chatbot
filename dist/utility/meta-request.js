@@ -203,7 +203,7 @@ const sendProductsTemplate = (phone_number, phone_number_id, token, name, action
     });
 });
 exports.sendProductsTemplate = sendProductsTemplate;
-const getCompanyCatalog = (token, businessId = "679854450187854") => __awaiter(void 0, void 0, void 0, function* () {
+const getCompanyCatalog = (token_1, ...args_1) => __awaiter(void 0, [token_1, ...args_1], void 0, function* (token, businessId = "679854450187854") {
     return (0, axios_1.default)({
         method: "GET",
         url: `https://graph.facebook.com/v18.0/${businessId}/owned_product_catalogs`,
@@ -214,7 +214,7 @@ const getCompanyCatalog = (token, businessId = "679854450187854") => __awaiter(v
     });
 });
 exports.getCompanyCatalog = getCompanyCatalog;
-const getCatalogProducts = (token, catalogId = "1413165056026732") => __awaiter(void 0, void 0, void 0, function* () {
+const getCatalogProducts = (token_2, ...args_2) => __awaiter(void 0, [token_2, ...args_2], void 0, function* (token, catalogId = "1413165056026732") {
     return (0, axios_1.default)({
         method: "GET",
         url: `https://graph.facebook.com/v19.0/${catalogId}/products`,
@@ -225,7 +225,7 @@ const getCatalogProducts = (token, catalogId = "1413165056026732") => __awaiter(
     });
 });
 exports.getCatalogProducts = getCatalogProducts;
-const getCompanyTemplates = (token, wabaId = "109949858629168") => __awaiter(void 0, void 0, void 0, function* () {
+const getCompanyTemplates = (token_3, ...args_3) => __awaiter(void 0, [token_3, ...args_3], void 0, function* (token, wabaId = "109949858629168") {
     return (0, axios_1.default)({
         method: "GET",
         url: `https://graph.facebook.com/v19.0/${wabaId}/message_templates?fields=name,status`,

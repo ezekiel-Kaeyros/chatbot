@@ -10,6 +10,9 @@ const socket_io_1 = require("socket.io");
 const cors_1 = __importDefault(require("cors"));
 const routes_1 = __importDefault(require("./routes"));
 require("./utility");
+const fs_1 = __importDefault(require("fs"));
+const path_1 = __importDefault(require("path"));
+const express_2 = __importDefault(require("express"));
 const app = (0, express_1.default)();
 app.use((0, cors_1.default)({
     origin: "*",
@@ -31,6 +34,12 @@ app.use((req, res, next) => {
     req.io = io;
     next();
 });
+// Vérifier et créer le dossier uploads s'il n'existe pas
+const uploadDir = path_1.default.join(__dirname, '..', 'uploads');
+if (!fs_1.default.existsSync(uploadDir)) {
+    fs_1.default.mkdirSync(uploadDir);
+}
+app.use('/uploads', express_2.default.static(uploadDir));
 app.use("/", routes_1.default);
 const PORT = process.env.PORT || 3300;
 httpServer.listen({ port: PORT }, () => {

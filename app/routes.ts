@@ -4,6 +4,7 @@ import { ScenarioService } from "./service/scenario-service";
 import { CredentialsService } from "./service/credentials-service";
 import { CompanyChatsService } from "./service/company-chats-service";
 import { AdminChatsService } from "./service/admin-chat-service";
+import upload from "./utility/multerConfig";
 
 const router = Router();
 
@@ -49,6 +50,12 @@ router.get(
     '/scenarios/:phone_number_id',
     scenarioService.getCompanyScenarios
 );
+
+router.post(
+    '/scenarios/upload-file',
+    upload.single('file'),
+    scenarioService.uploadFile
+)
 
 // CHATBOT
 router.get(

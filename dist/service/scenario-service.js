@@ -88,8 +88,8 @@ let ScenarioService = class ScenarioService {
         });
     }
     getCompanyScenarios(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const phone_number_id = (_a = req.params) === null || _a === void 0 ? void 0 : _a.phone_number_id;
                 if (!phone_number_id)
@@ -126,8 +126,8 @@ let ScenarioService = class ScenarioService {
         });
     }
     getScenario(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const scenarioId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!scenarioId)
@@ -146,8 +146,8 @@ let ScenarioService = class ScenarioService {
         });
     }
     editScenario(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const input = (0, class_transformer_1.plainToClass)(scenario_input_1.ScenarioInput, req.body);
                 const error = yield (0, errors_1.AppValidationError)(input);
@@ -182,8 +182,8 @@ let ScenarioService = class ScenarioService {
         });
     }
     deleteScenario(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const scenarioId = (_a = req.params) === null || _a === void 0 ? void 0 : _a.id;
                 if (!scenarioId)
@@ -198,6 +198,30 @@ let ScenarioService = class ScenarioService {
                 return res
                     .status(500)
                     .send({ error: error === null || error === void 0 ? void 0 : error.message });
+            }
+        });
+    }
+    uploadFile(req, res) {
+        return __awaiter(this, void 0, void 0, function* () {
+            try {
+                const file = req.file;
+                const phoneNumberID = req.body.phone_number_id;
+                if (!file) {
+                    return res.status(400).send('No file uploaded.');
+                }
+                if (!phoneNumberID) {
+                    return res.status(400).send('No phoneNumberID provided.');
+                }
+                const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+                res.status(200).send({
+                    message: 'File uploaded successfully!',
+                    fileUrl: fileUrl,
+                    phoneNumberID: phoneNumberID
+                });
+            }
+            catch (error) {
+                console.log(error);
+                return res.status(500).send({ error: error === null || error === void 0 ? void 0 : error.message });
             }
         });
     }

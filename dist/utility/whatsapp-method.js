@@ -450,7 +450,7 @@ const saveQuestion = (question) => {
     }
 };
 exports.saveQuestion = saveQuestion;
-const chatToString = (chats, recipientPhone, username, phoneNumberId = '', company = '', report_into = '') => __awaiter(void 0, void 0, void 0, function* () {
+const chatToString = (chats_1, recipientPhone_1, username_1, ...args_1) => __awaiter(void 0, [chats_1, recipientPhone_1, username_1, ...args_1], void 0, function* (chats, recipientPhone, username, phoneNumberId = '', company = '', report_into = '') {
     let text = `Merci *${username}* pour cet échange, veuillez trouver ci-dessous le résumé de nos échanges.\n\n`;
     // Fete des meres
     if (report_into) {

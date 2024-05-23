@@ -80,8 +80,8 @@ let AdminChatsService = class AdminChatsService {
         });
     }
     getCompanyChats(req, res) {
-        var _a;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const phone_number_id = (_a = req.params) === null || _a === void 0 ? void 0 : _a.phone_number_id;
                 if (!phone_number_id)
@@ -120,8 +120,8 @@ let AdminChatsService = class AdminChatsService {
         });
     }
     getChatsConversation(req, res) {
-        var _a, _b;
         return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
             try {
                 const phone_number_id = (_a = req.params) === null || _a === void 0 ? void 0 : _a.phone_number_id;
                 if (!phone_number_id)
