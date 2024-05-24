@@ -24,6 +24,7 @@ const companyChatsRepository = new company_chat_repository_1.CompanyChatResposit
 const scenarioRepository = new scenario_repository_1.ScenarioRespository();
 const credentialsRepository = new credentials_repository_1.CredentialsRepository();
 const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function* () {
+    var _a, _b, _c, _d;
     console.dir("INCOMMING MESSAGE: ");
     //console.dir(body, { depth: null });
     for (let [phone, session] of chat_model_1.sessions) {
@@ -32,7 +33,7 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                 const token = (yield credentialsRepository.getByPhoneNumber(company)).token;
                 yield (0, exports.forbiddenUserResponse)({
                     recipientPhone: phone,
-                    message: "Session terminée"
+                    message: "Session terminéex"
                 }, company, token);
                 yield companyChatsRepository.addChatMessage(company, phone, {
                     text: "Session terminée",
@@ -105,18 +106,39 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
             const credentials = yield credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
             if (credentials)
                 yield (0, exports.markMessageAsRead)(waResponse.id, waResponse.phone_number_id, credentials.token);
-            // STOP BOT
-            const chats = yield companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
+            // KILL Session
+            if (waResponse.type === 'text' && waResponse.data.text.body.trim().toLocaleLowerCase() === 'kill') {
+                if ((_a = chat_model_1.sessions === null || chat_model_1.sessions === void 0 ? void 0 : chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id)) {
+                    (_b = chat_model_1.sessions.get(waResponse.phone_number)) === null || _b === void 0 ? void 0 : _b.delete(waResponse.phone_number_id);
+                }
+                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
+                    text: "Session terminée",
+                    is_bot: true,
+                    is_admin: false,
+                    date: new Date(),
+                    is_read: false,
+                    chat_status: bot_enum_1.ChatStatus.END,
+                    scenario_name: (_d = (_c = chat_model_1.sessions === null || chat_model_1.sessions === void 0 ? void 0 : chat_model_1.sessions.get(waResponse.phone_number)) === null || _c === void 0 ? void 0 : _c.get(waResponse.phone_number_id)) === null || _d === void 0 ? void 0 : _d.scenario_name
+                }, body.io);
+                yield (0, exports.forbiddenUserResponse)({
+                    recipientPhone: waResponse.phone_number,
+                    message: "Session terminée"
+                }, waResponse.phone_number_id, credentials.token);
+                return false;
+            }
+            /*
+            const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
             if (chats &&
                 chats.chat_messages &&
-                chats.chat_messages.length > 0) {
+                chats.chat_messages.length > 0
+            ) {
                 const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
                 if (lastAdminChatMessage) {
                     const dateLastMessage = new Date(lastAdminChatMessage.date);
                     const currentDate = new Date();
                     const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
                     const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
-                    /*if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
+                    
                         const message: string = getContentWhatsappMessage(waResponse);
                         await companyChatsRepository.addChatMessage(
                             waResponse.phone_number_id,
@@ -133,9 +155,9 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                         );
                         sessions.clear();
                         return false
-                    }*/
+                    }
                 }
-            }
+            }*/
             // LOYALTY PROGRAM REQUEST
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
                 //console.log("LOYATY PROGRAM: ", waResponse.data.text.body);
