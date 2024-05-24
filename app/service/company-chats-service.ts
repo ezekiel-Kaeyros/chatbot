@@ -114,8 +114,6 @@ export class CompanyChatsService {
                     if (sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
                         if (waResponse.type === "text" || waResponse.type === "button") {
                             if (waResponse.type === "button") {
-                                console.dir(waResponse.data.button, { depth: null });
-                                console.dir(waResponse.data.button.text, { depth: null });
                                 
                                 if (waResponse.data.button.text.trim() === "ça ne m'intéresse pas") {
                                     await sendWhatsappMessage(

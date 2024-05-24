@@ -119,8 +119,6 @@ let CompanyChatsService = class CompanyChatsService {
                         if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
                             if (waResponse.type === "text" || waResponse.type === "button") {
                                 if (waResponse.type === "button") {
-                                    console.dir(waResponse.data.button, { depth: null });
-                                    console.dir(waResponse.data.button.text, { depth: null });
                                     if (waResponse.data.button.text.trim() === "ça ne m'intéresse pas") {
                                         yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, {
                                             messaging_product: "whatsapp",
