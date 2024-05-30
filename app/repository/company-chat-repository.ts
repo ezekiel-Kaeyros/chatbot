@@ -8,6 +8,7 @@ import {
 } from "../models/company-chats-model";
 import { ClientPointModel } from "../models/client-point-model";
 import { TombolaProductModel } from "../models/tombola-product-model";
+import { Conversation } from "app/models/chat-model";
 
 export class CompanyChatRespository {
   constructor() {}
@@ -68,6 +69,34 @@ export class CompanyChatRespository {
       return chatsConversation;
     }
   }
+
+  async updateStatusLastChatConversation(phone_number_id: string, phone_number: string, status: "pending" | "open"): Promise<any> {
+    try {
+      const companyChats = (await companiesChats.findOne({
+        phone_number_id,
+      })) as CompanyChatsDoc;
+      if (companyChats?.conversations) {
+        const chatsConversation = companyChats.conversations.find(
+          (conversation) => conversation.phone_number === phone_number
+        );
+        if(!chatsConversation?.chat_messages.length) {
+          chatsConversation.chat_messages[chatsConversation.chat_messages.length - 1].chat_status = status
+        }
+        companyChats?.conversations.map((conversation) => {
+          if (conversation.phone_number === phone_number) {
+            conversation = chatsConversation;
+          }
+        });
+        //companyChats.markModified("conversations");
+        return await companiesChats.findByIdAndUpdate(companyChats.id, companyChats);
+      }
+        
+    } catch (error) {
+        console.error('Error updating chat status:', error);
+        throw error;
+    }
+}
+
 
   async updateCompanyChats({
     _id,

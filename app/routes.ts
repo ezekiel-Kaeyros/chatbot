@@ -77,6 +77,10 @@ router.get(
     '/credentials/:id',
     credentialsService.getCredentials
 );
+router.get(
+    '/credentials/user/emai/',
+    credentialsService.getCredentialsByEmail
+);
 router.post(
     '/credentials',
     credentialsService.createCredentials
@@ -105,6 +109,12 @@ router.post(
     '/chats',
     adminChatsService.sendChatMessage
 );
+
+router.post(
+    '/chats/update-status-conversation',
+    adminChatsService.changeStatusConversation
+);
+
 router.get(
     '/chats/:phone_number_id/:phone_number',
     adminChatsService.getChatsConversation
