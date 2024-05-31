@@ -125,39 +125,65 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
             const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
             if (credentials) await markMessageAsRead(waResponse.id, waResponse.phone_number_id, credentials.token);
 
-            // STOP BOT
-            //const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
-            // if (chats && 
-            //     chats.chat_messages && 
-            //     chats.chat_messages.length > 0
-            // ) {
-            //     const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
-            //     if (lastAdminChatMessage) {
-            //         const dateLastMessage = new Date(lastAdminChatMessage.date);
-            //         const currentDate = new Date();
-            //         const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
-            //         const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
+            // KILL Session
+            if(waResponse.type === 'text' && waResponse.data.text.body.trim().toLocaleLowerCase() === 'kill') {
+                if (sessions?.get(waResponse.phone_number)?.get(waResponse.phone_number_id)) {
+                    sessions.get(waResponse.phone_number)?.delete(waResponse.phone_number_id)
+                }
+
+                await companyChatsRepository.addChatMessage(
+                    waResponse.phone_number_id,
+                    waResponse.phone_number,
+                    {
+                        text: "Session terminée",
+                        is_bot: true,
+                        is_admin: false,
+                        date: new Date(),
+                        is_read: false,
+                        chat_status: ChatStatus.END,
+                        scenario_name: sessions?.get(waResponse.phone_number)?.get(waResponse.phone_number_id)?.scenario_name
+                    }, body.io);
+
+                await forbiddenUserResponse({
+                    recipientPhone: waResponse.phone_number,
+                    message: "Session terminée"
+                }, waResponse.phone_number_id, credentials.token);
+                return false;
+
+            }
+           
+            /*
+            const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
+            if (chats && 
+                chats.chat_messages && 
+                chats.chat_messages.length > 0
+            ) {
+                const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
+                if (lastAdminChatMessage) {
+                    const dateLastMessage = new Date(lastAdminChatMessage.date);
+                    const currentDate = new Date();
+                    const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
+                    const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
                     
-            //         if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
-            //             const message: string = getContentWhatsappMessage(waResponse);
-            //             await companyChatsRepository.addChatMessage(
-            //                 waResponse.phone_number_id,
-            //                 waResponse.phone_number,
-            //                 {
-            //                     text: message,
-            //                     is_bot: false,
-            //                     is_admin: false,
-            //                     date: new Date(),
-            //                     is_read: false,
-            //                     chat_status: ChatStatus.PENDING
-            //                 },
-            //                 body.io
-            //             );
-            //             sessions.clear();
-            //             return false
-            //         }
-            //     }
-            // }
+                        const message: string = getContentWhatsappMessage(waResponse);
+                        await companyChatsRepository.addChatMessage(
+                            waResponse.phone_number_id,
+                            waResponse.phone_number,
+                            {
+                                text: message,
+                                is_bot: false,
+                                is_admin: false,
+                                date: new Date(),
+                                is_read: false,
+                                chat_status: ChatStatus.PENDING
+                            },
+                            body.io
+                        );
+                        sessions.clear();
+                        return false
+                    }
+                }
+            }*/
 
             // LOYALTY PROGRAM REQUEST
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {

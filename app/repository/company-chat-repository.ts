@@ -8,6 +8,7 @@ import {
 } from "../models/company-chats-model";
 import { ClientPointModel } from "../models/client-point-model";
 import { TombolaProductModel } from "../models/tombola-product-model";
+import { Conversation } from "app/models/chat-model";
 
 export class CompanyChatRespository {
   constructor() {}
@@ -68,6 +69,51 @@ export class CompanyChatRespository {
       return chatsConversation;
     }
   }
+
+  async updateStatusLastChatConversation(phone_number_id: string, phone_number: string, status: "pending" | "open"): Promise<any> {
+    try {
+      // Mise à jour de la conversation avec le chat le plus récent
+      const result = await companiesChats.updateOne(
+          {
+              phone_number_id,
+              'conversations.phone_number': phone_number,
+              // Pour trouver le message le plus récent
+              'conversations.chat_messages.date': { $exists: true }
+          },
+          {
+              // Utilisation de $set pour mettre à jour le statut du message le plus récent
+              $set: {
+                  'conversations.$[conversation].chat_messages.$[message].chat_status': status
+              }
+          },
+          {
+              arrayFilters: [
+                  { 'conversation.phone_number': phone_number },
+                  { 'message.date': { $eq: (await companiesChats.aggregate([
+                      { $match: { phone_number_id: phone_number_id, 'conversations.phone_number': phone_number } },
+                      { $unwind: "$conversations" },
+                      { $match: { 'conversations.phone_number': phone_number } },
+                      { $unwind: "$conversations.chat_messages" },
+                      { $sort: { 'conversations.chat_messages.date': -1 } },
+                      { $limit: 1 },
+                      { $project: { 'conversations.chat_messages.date': 1 } }
+                  ]))[0]?.conversations.chat_messages.date } }
+              ]
+          }
+      );
+
+      if (result.modifiedCount === 0) {
+          throw new Error("Aucune conversation ou message correspondant trouvé pour la mise à jour.");
+      }
+
+      return result;
+  } catch (error) {
+      console.error('Error updating chat status:', error);
+      throw error;
+  }
+}
+
+
 
   async updateCompanyChats({
     _id,

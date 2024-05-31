@@ -8,56 +8,63 @@ export const parseScenario = async (questions: QuestionModel[], phone_number_id:
     for (let question of questions) {
         let badNbr;
 
-        if (! question.responses) {
-            question.responseType = "text";
-        } else if (question.responses.length >= 2 && question.responses.length <= 3) {
-            question.responseType = "button";
-            for (let response of question.responses) {
-                if (response.questions) {
-                    badNbr = await parseScenario(response.questions);
-                }
+        if (question.responseType ) {
+           
+        }else{
 
-                if (badNbr) return true;
-            }
-        } else if (question.responses.length >= 4 && question.responses.length <= 10) {
-            question.responseType = "list";
-            for (let response of question.responses) {
-                if (response.questions) {
-                    badNbr = await parseScenario(response.questions);
+            if (! question.responses) {
+                question.responseType = "text";
+            } else if (question.responses.length >= 2 && question.responses.length <= 3) {
+                question.responseType = "button";
+                for (let response of question.responses) {
+                    if (response.questions) {
+                        badNbr = await parseScenario(response.questions);
+                    }
+    
+                    if (badNbr) return true;
                 }
-
-                if (badNbr) return true;
-            }
-        } else if (
-            question.responses.length === 1 &&
-            question.responses[0].label.lastIndexOf("_") > 0 &&
-            question.responses[0].template_action
-        ) {
-            const { status: whatsappAccessStatus, data: whatsappAccessData } = await PullWhatappAccessData({
-                phone_number_id
-            });
-            if (whatsappAccessStatus !== 200) {
-                throw new Error("your phone number ID does not exist");
-            } else {
-                const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
-                const { status, data } = await getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
-                
-                if (status !== 200) {
-                    throw new Error("Impossible get retreive your templates list, check your internet connection");
+            } else if (question.responses.length >= 4 && question.responses.length <= 10) {
+                question.responseType = "list";
+                for (let response of question.responses) {
+                    if (response.questions) {
+                        badNbr = await parseScenario(response.questions);
+                    }
+    
+                    if (badNbr) return true;
+                }
+            } else if (
+                question.responses.length === 1 &&
+                question.responses[0].label.lastIndexOf("_") > 0 &&
+                question.responses[0].template_action
+            ) {
+                const { status: whatsappAccessStatus, data: whatsappAccessData } = await PullWhatappAccessData({
+                    phone_number_id
+                });
+                if (whatsappAccessStatus !== 200) {
+                    throw new Error("your phone number ID does not exist");
                 } else {
-                    const templatesList = data.data as TemplateResponseModel[];
-                    if (!(templatesList.find(template => template.name === question.responses[0].label))) {
-                        console.log(`Template ${question.responses[0].label} does not exist`);
-                        throw new Error(`Template ${question.responses[0].label} does not exist`);
+                    const whatsappAccess = whatsappAccessData.data as WhatsappAccessModel;
+                    const { status, data } = await getTemplatesList(whatsappAccess.waba_id, whatsappAccess.token);
+                    
+                    if (status !== 200) {
+                        throw new Error("Impossible get retreive your templates list, check your internet connection");
                     } else {
-                        console.log(`Template ${question.responses[0].label} exists`);
-                        question.responseType = "template";
+                        const templatesList = data.data as TemplateResponseModel[];
+                        if (!(templatesList.find(template => template.name === question.responses[0].label))) {
+                            console.log(`Template ${question.responses[0].label} does not exist`);
+                            throw new Error(`Template ${question.responses[0].label} does not exist`);
+                        } else {
+                            console.log(`Template ${question.responses[0].label} exists`);
+                            question.responseType = "template";
+                        }
                     }
                 }
+            } else {
+                throw new Error("Bad format responses, check the number of your responses");
             }
-        } else {
-            throw new Error("Bad format responses, check the number of your responses");
         }
+
+      
     }
     return false;
 };

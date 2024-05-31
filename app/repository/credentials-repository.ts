@@ -44,6 +44,10 @@ export class CredentialsRepository {
         return credentials.findOne({ phone_number_id });
     }
 
+    async getByEmail(email: any) {
+        return credentials.find({ email });
+    }
+
     async getByVerifyToken(verify_token: string) {
         return credentials.findOne({ verify_token });
     }

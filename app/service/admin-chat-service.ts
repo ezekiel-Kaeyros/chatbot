@@ -47,8 +47,8 @@ export class AdminChatsService {
                     recipientPhone: input.phone_number,
                     message: input.message
                 }));
-            }
-            return res.status(200).send(data);*/
+            }*/
+            return res.status(200).send();
         } catch (error) {
             console.log(error);
             return res.status(500).send({error: error?.message});
@@ -119,6 +119,30 @@ export class AdminChatsService {
         } catch (error) {
             console.log(error);
             return res.status(200).send({ error: error?.message });
+        }
+    }
+
+    async changeStatusConversation(req: Request, res: Response) {
+        try {
+            const { phone_number, phone_number_id, status }: { phone_number: string, phone_number_id: string, status: "pending" | "open" } = req.body;
+    
+            // Validate status
+            const validStatuses = ["pending", "open"];
+            if (!validStatuses.includes(status)) {
+                return res.status(400).send({ error: "Statut invalide, seuls les statuts 'pending' et 'open' sont pris en compte" });
+            }
+    
+            // Update chat status
+            const updateResult = await companyChatsRepository.updateStatusLastChatConversation(phone_number_id, phone_number, status);
+            
+            if (!updateResult) {
+                return res.status(404).send({ error: "Company chat or conversation not found" });
+            }
+    
+            return res.status(200).send({ message: "Chat status updated successfully" });
+        } catch (error) {
+            console.log(error);
+            return res.status(500).send({ error: "Internal error" });
         }
     }
 

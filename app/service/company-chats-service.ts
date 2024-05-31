@@ -86,7 +86,7 @@ export class CompanyChatsService {
                     const received = getTextMessageWAResponseModel(waResponse);
                     console.log('send =======', send);
                     console.log('received =======', received);
-                    
+
                     session.chats.push({send, received});
                     console.log('session.chats ===', session.chats);
                     await this.saveChatMessage(waResponse, session, send, ChatStatus.PENDING, req.io);
