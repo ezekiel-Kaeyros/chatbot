@@ -92,23 +92,6 @@ export class CredentialsService {
         }
     }
 
-    async getCredentialsByEmail(req: Request, res: Response) {
-        try {
-            const email = req.query?.email;
-            if (!email) return ErrorResponse(404, "please provide credentials id");
-
-            const data = await repository.getByEmail(email)
-            return res
-                .status(200)
-                .send(data);
-        } catch (error) {
-            console.log(error);
-            return res
-                .status(500)
-                .send({ message: "custom error response" });
-        }
-    }
-
     async getAllCredentials(req: Request, res: Response) {
         try {
             const data = await repository.getAll();

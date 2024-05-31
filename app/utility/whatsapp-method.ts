@@ -5,7 +5,9 @@ import {
     SendWACatalogModel,
     SendWAImageModel,
     SendWAListModel,
+    SendWAMessageModel,
     SendWAProductsTemplateModel,
+    SendWATemplateModel,
     SendWATextModel,
     WAButtons,
     WACatalog,
@@ -26,6 +28,7 @@ import { CredentialsRepository } from "../repository/credentials-repository";
 import { UpdateBroadcastStatusInput } from "../models/dto/update-broadcast-status-input";
 import { BroadcastStatusModel } from "../models/broadcast-status-model";
 import { ChatStatus, TimeToDisableBot, TypeWhatsappMessage } from "../enums/bot-enum";
+import { TemplateResponseModel } from "app/models/template-response-model";
 
 const companyChatsRepository = new CompanyChatRespository();
 const scenarioRepository = new ScenarioRespository();
@@ -40,7 +43,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                 const token = (await credentialsRepository.getByPhoneNumber(company)).token;
                 await forbiddenUserResponse({
                     recipientPhone: phone,
-                    message: "Session terminéex"
+                    message: "Session terminée"
                 }, company, token);
                 await companyChatsRepository.addChatMessage(
                     company,
@@ -117,70 +120,44 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                 data: body.entry[0].changes[0].value.messages[0],
                 id: body.entry[0].changes[0].value.messages[0].id
             };
-
+            
             // MARK MESSAGE AS READ
             const credentials = await credentialsRepository.getByPhoneNumber(waResponse.phone_number_id);
             if (credentials) await markMessageAsRead(waResponse.id, waResponse.phone_number_id, credentials.token);
 
-            // KILL Session
-            if(waResponse.type === 'text' && waResponse.data.text.body.trim().toLocaleLowerCase() === 'kill') {
-                if (sessions?.get(waResponse.phone_number)?.get(waResponse.phone_number_id)) {
-                    sessions.get(waResponse.phone_number)?.delete(waResponse.phone_number_id)
-                }
-
-                await companyChatsRepository.addChatMessage(
-                    waResponse.phone_number_id,
-                    waResponse.phone_number,
-                    {
-                        text: "Session terminée",
-                        is_bot: true,
-                        is_admin: false,
-                        date: new Date(),
-                        is_read: false,
-                        chat_status: ChatStatus.END,
-                        scenario_name: sessions?.get(waResponse.phone_number)?.get(waResponse.phone_number_id)?.scenario_name
-                    }, body.io);
-
-                await forbiddenUserResponse({
-                    recipientPhone: waResponse.phone_number,
-                    message: "Session terminée"
-                }, waResponse.phone_number_id, credentials.token);
-                return false;
-
-            }
-           
-            /*
-            const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
-            if (chats && 
-                chats.chat_messages && 
-                chats.chat_messages.length > 0
-            ) {
-                const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
-                if (lastAdminChatMessage) {
-                    const dateLastMessage = new Date(lastAdminChatMessage.date);
-                    const currentDate = new Date();
-                    const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
-                    const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
+            // STOP BOT
+            //const chats = await companyChatsRepository.getChatsConversation(waResponse.phone_number_id, waResponse.phone_number);
+            // if (chats && 
+            //     chats.chat_messages && 
+            //     chats.chat_messages.length > 0
+            // ) {
+            //     const lastAdminChatMessage = chats.chat_messages.reverse().find(chat => chat.is_admin);
+            //     if (lastAdminChatMessage) {
+            //         const dateLastMessage = new Date(lastAdminChatMessage.date);
+            //         const currentDate = new Date();
+            //         const differenceInMilliseconds = currentDate.getTime() - dateLastMessage.getTime();
+            //         const differenceInSeconde = Math.floor(differenceInMilliseconds / 1000);
                     
-                        const message: string = getContentWhatsappMessage(waResponse);
-                        await companyChatsRepository.addChatMessage(
-                            waResponse.phone_number_id,
-                            waResponse.phone_number,
-                            {
-                                text: message,
-                                is_bot: false,
-                                is_admin: false,
-                                date: new Date(),
-                                is_read: false,
-                                chat_status: ChatStatus.PENDING
-                            },
-                            body.io
-                        );
-                        sessions.clear();
-                        return false
-                    }
-                }
-            }*/
+            //         if (differenceInSeconde < TimeToDisableBot.IN_SECONDE) {
+            //             const message: string = getContentWhatsappMessage(waResponse);
+            //             await companyChatsRepository.addChatMessage(
+            //                 waResponse.phone_number_id,
+            //                 waResponse.phone_number,
+            //                 {
+            //                     text: message,
+            //                     is_bot: false,
+            //                     is_admin: false,
+            //                     date: new Date(),
+            //                     is_read: false,
+            //                     chat_status: ChatStatus.PENDING
+            //                 },
+            //                 body.io
+            //             );
+            //             sessions.clear();
+            //             return false
+            //         }
+            //     }
+            // }
 
             // LOYALTY PROGRAM REQUEST
             if (waResponse.type, waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
@@ -193,6 +170,7 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                 if (waResponse.type === "button") {
                     if (!sessions.has(waResponse.phone_number)) sessions.delete(waResponse.phone_number);
                 }
+
 
                 if (!sessions.has(waResponse.phone_number)) {
                     const conversation = await getSuitableScenario(waResponse);
@@ -251,7 +229,6 @@ export const getWhatsappResponse = async (body: any): Promise<WAResponseModel|bo
                     }
                 }
             }
-            console.log(waResponse.data);
             return waResponse;
         }
         return false;
@@ -305,7 +282,7 @@ export const forbiddenUserResponse = async (data: WAText, phone_number_id: strin
 export const sendWhatsappMessage = async (
     phone_number_id: string,
     token: string,
-    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel|SendWAImageModel
+    data: SendWATextModel|SendWAButtonModel|SendWAListModel|SendWAProductsTemplateModel|SendWAImageModel|SendWATemplateModel
 ) => {
     const { status } = await axios({
         method: "POST",
@@ -327,7 +304,7 @@ export const textMessage = (data: WAText): SendWATextModel => {
         type: "text",
         text: {
             body: data.message
-        }
+        },
     };
 };
 
@@ -444,7 +421,39 @@ export const catalogMessage = (data: WACatalog): SendWACatalogModel => {
     };
 };
 
+export const getTextSendWAMessageModel = (message: SendWAMessageModel): string => {
+    if (message.type === 'text') {
+        const newMessage = message as SendWATextModel;
+        return newMessage.text.body
+    } else if (message.type === 'image') {
+        const newMessage = message as SendWAImageModel
+        return newMessage.image.link;
+    } else if (message.type === 'interactive') {
+        const newMessage = message as SendWAListModel | SendWAButtonModel
+        return newMessage.interactive.body.text;
+    } else if (message.type === 'template') {
+        const newMessage = message as SendWATemplateModel
+        return newMessage.template.name;
+    }
+}
+
+export const getTextMessageWAResponseModel = (waResponse: WAResponseModel): string => {
+    let message = '';
+    if (waResponse.type === "text") {
+        message = waResponse.data.text.body.trim();
+    } else if (waResponse.type === "button") {
+        message = waResponse.data.button.text.trim();
+    } else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+        message = waResponse.data.interactive.button_reply.title;
+    } else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
+        message = waResponse.data.interactive.list_reply.title;
+    }
+    return message;
+}
+
 export const askQuestion = (recipientPhone: string, question: QuestionModel) => {
+    console.log('question.responseType ======== ', question.responseType);
+    
     if (question.responseType === "text") {
         return textMessage({ recipientPhone, message: question.label });
     } else if (question.responseType === "button") {
@@ -483,11 +492,10 @@ export const askQuestion = (recipientPhone: string, question: QuestionModel) => 
 export const saveQuestion = (question: QuestionModel) => {
     if (question.responseType === "text") return question.label;
     if (question.responseType === "image") return question.link;
-    else {
-        let text = `${question.label}`;
-        question.responses.forEach(resp => text + `\n${resp.label}`);
-        return text;
-    }
+    let text = `${question.label}`;
+    question.responses.forEach(resp => text + `\n${resp.label}`);
+    return text;
+
 };
 
 export const chatToString = async (
@@ -597,6 +605,33 @@ export const bulkmessageUpdateBroadcastStatus = async (data: UpdateBroadcastStat
         error: data.error
     }, phone_number_id);
 };
+
+export const formatBodyTemplateMessage = (phone_number: string, name: string): SendWATemplateModel => {
+    return {
+        messaging_product: "whatsapp",
+        to: phone_number,
+        type: "template",
+        template: {
+            name: name,
+            language: {
+                code: "fr"
+            },
+            components: [
+                {
+                    type: "header",
+                    parameters: [
+                        {
+                            type: "image",
+                            image: {
+                                link: "https://res.cloudinary.com/devskills/image/upload/v1712220488/motherbirthday_vlfuh5.jpg"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    };
+}
 
 export const sendTemplateMessage = async (phone_number: string, phone_number_id: string, token: string) => {
     return axios({

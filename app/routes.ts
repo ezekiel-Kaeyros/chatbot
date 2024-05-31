@@ -10,7 +10,7 @@ const router = Router();
 
 const scenarioService = container.resolve(ScenarioService);
 const credentialsService = container.resolve(CredentialsService);
-const companyChatsService = container.resolve(CompanyChatsService);
+const companyChatsService = new CompanyChatsService();
 const adminChatsService = container.resolve(AdminChatsService);
 
 router.get('/', (req: Request, res: Response) => res.send('App start'));
@@ -60,12 +60,12 @@ router.post(
 // CHATBOT
 router.get(
     '/webhook',
-    companyChatsService.getMessage
+    (req, res) => companyChatsService.getMessage(req, res)
 );
 
 router.post(
     '/webhook',
-    companyChatsService.sendMessage
+    (req, res) => companyChatsService.sendMessage(req, res)
 );
 
 // CREDENTIALS
@@ -76,10 +76,6 @@ router.get(
 router.get(
     '/credentials/:id',
     credentialsService.getCredentials
-);
-router.get(
-    '/credentials/user/emai/',
-    credentialsService.getCredentialsByEmail
 );
 router.post(
     '/credentials',
@@ -109,12 +105,6 @@ router.post(
     '/chats',
     adminChatsService.sendChatMessage
 );
-
-router.post(
-    '/chats/update-status-conversation',
-    adminChatsService.changeStatusConversation
-);
-
 router.get(
     '/chats/:phone_number_id/:phone_number',
     adminChatsService.getChatsConversation

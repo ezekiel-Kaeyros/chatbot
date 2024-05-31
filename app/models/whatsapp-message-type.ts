@@ -47,7 +47,10 @@ export type SendWATextModel = {
     text: {
         body: string
     }
+    recipient_type?: string,
 };
+
+export type SendWAMessageModel = SendWATextModel | SendWAButtonModel | SendWAListModel | SendWAProductsTemplateModel | SendWAImageModel | SendWATemplateModel;
 
 type actionButtonsModel = {
     type: "reply",
@@ -119,6 +122,26 @@ export type SendWAProductsTemplateModel = {
                         action: TemplateAction
                     }
                 ]
+            }
+        ]
+    }
+};
+
+export type SendWATemplateModel = {
+    messaging_product: "whatsapp",
+    to: string,
+    type: "template",
+    template: {
+        name: string,
+        language: {
+            code: "fr"
+        },
+        components: [
+            {
+                type: string,
+                sub_type?: "mpm",
+                index?: number,
+                parameters: any[]
             }
         ]
     }
