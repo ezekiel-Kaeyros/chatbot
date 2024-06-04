@@ -13,17 +13,18 @@ exports.CredentialsRepository = void 0;
 const credentials_model_1 = require("../models/credentials-model");
 class CredentialsRepository {
     create(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token }) {
+        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token, email }) {
             return credentials_model_1.credentials.create({
                 company,
                 phone_number_id,
                 verify_token,
-                token
+                token,
+                email
             });
         });
     }
     update(_a) {
-        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token, _id }) {
+        return __awaiter(this, arguments, void 0, function* ({ company, phone_number_id, verify_token, token, _id, }) {
             let existingCredentials = yield credentials_model_1.credentials.findById(_id);
             existingCredentials.company = company;
             existingCredentials.phone_number_id = phone_number_id;

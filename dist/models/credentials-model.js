@@ -9,7 +9,8 @@ const credentialsSchema = new mongoose_1.default.Schema({
     company: String,
     phone_number_id: Number,
     verify_token: String,
-    token: String
+    token: String,
+    email: String
 }, {
     toJSON: {
         transform(doc, ret, options) {

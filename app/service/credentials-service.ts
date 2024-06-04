@@ -19,12 +19,14 @@ export class CredentialsService {
     }
 
     async createCredentials(req: Request, res: Response) {
+        console.log('helllo======');
+        
         try {
             const input = plainToClass(CredentialsInput, req.body);
-            const error = await AppValidationError(input);
-            if (error) return ErrorResponse(404, error);
-            console.log(input);
-            const data = await repository.create(input);
+            // const error = await AppValidationError(input);
+            // if (error) return ErrorResponse(404, error);
+            // console.log(input);
+            const data = await repository.create(req.body);
 
             return res
                 .status(201)
@@ -81,9 +83,7 @@ export class CredentialsService {
             if (!credentialsId) return ErrorResponse(404, "please provide credentials id");
 
             const data = await repository.getById(credentialsId)
-            return res
-                .status(200)
-                .send(data);
+            return res.status(200).send(data);
         } catch (error) {
             console.log(error);
             return res

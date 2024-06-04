@@ -6,6 +6,7 @@ export type CredentialsModel = {
     verify_token: string;
     token: string;
     _id?: string;
+    email?: String;
 };
 
 export type CredentialsDoc = mongoose.Document & CredentialsModel;
@@ -15,7 +16,8 @@ const credentialsSchema = new mongoose.Schema(
         company: String,
         phone_number_id: Number,
         verify_token: String,
-        token: String
+        token: String,
+        email: String
     },
     {
         toJSON: {

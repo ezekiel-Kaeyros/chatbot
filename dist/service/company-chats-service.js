@@ -5,6 +5,9 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
     else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
     return c > 3 && r && Object.defineProperty(target, key, r), r;
 };
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -17,21 +20,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CompanyChatsService = void 0;
 const tsyringe_1 = require("tsyringe");
-const response_1 = require("../utility/response");
 const credentials_repository_1 = require("../repository/credentials-repository");
 const whatsapp_method_1 = require("../utility/whatsapp-method");
 const chat_model_1 = require("../models/chat-model");
 const company_chat_repository_1 = require("../repository/company-chat-repository");
 const meta_request_1 = require("../utility/meta-request");
 const bot_enum_1 = require("../enums/bot-enum");
+const upload_file_from_webhook_1 = require("../utility/upload-file-from-webhook");
 const companyChatsRepository = new company_chat_repository_1.CompanyChatRespository();
 const credentialsRepository = new credentials_repository_1.CredentialsRepository();
 let CompanyChatsService = class CompanyChatsService {
-    ResponseWithError(event) {
-        return __awaiter(this, void 0, void 0, function* () {
-            return (0, response_1.ErrorResponse)(404, "request method is not supported!");
-        });
-    }
+    constructor() { }
     getMessage(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
             try {
@@ -59,395 +58,335 @@ let CompanyChatsService = class CompanyChatsService {
     }
     sendMessage(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
                 const body = Object.assign(Object.assign({}, req.body), { io: req.io });
-                let data;
-                if (yield (0, whatsapp_method_1.getWhatsappResponse)(body)) {
-                    const waResponse = yield (0, whatsapp_method_1.getWhatsappResponse)(body);
-                    const token = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).token;
-                    if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Loyalty program: ")) {
-                        const programName = (0, whatsapp_method_1.getPrgramName)(waResponse.data.text.body);
-                        let { status, data } = yield (0, whatsapp_method_1.loyaltyProgramSavePoint)({
-                            client_phone_number: waResponse.phone_number,
-                            program_name: programName,
-                            phone_number_id: waResponse.phone_number_id
-                        }, waResponse.phone_number_id);
-                        if (status === 200) {
-                            const clientPoint = data.data;
-                            status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, (0, whatsapp_method_1.textMessage)({
-                                recipientPhone: waResponse.phone_number,
-                                message: `${programName}: ${clientPoint.points} points`
-                            }));
-                            // await companyChatsRepository.socketPostScanLoyaltyProgram(clientPoint);
-                            return 200;
-                        }
-                        else {
-                            status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, (0, whatsapp_method_1.textMessage)({
-                                recipientPhone: waResponse.phone_number,
-                                message: `You cannot get point`
-                            }));
-                            return 200;
-                        }
-                    }
-                    else if (waResponse.type === "text" && waResponse.data.text.body.startsWith("Tombola: ")) {
-                        const tombolaName = (0, whatsapp_method_1.getTombolaName)(waResponse.data.text.body);
-                        let { status, data } = yield (0, whatsapp_method_1.tombolaSaveRandomDraw)({
-                            client_phone_number: waResponse.phone_number,
-                            tombola_name: tombolaName,
-                            phone_number_id: waResponse.phone_number_id
-                        }, waResponse.phone_number_id);
-                        if (status === 200) {
-                            console.log(data);
-                            const product = data.data;
-                            status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, (0, whatsapp_method_1.textMessage)({
-                                recipientPhone: waResponse.phone_number,
-                                message: `${tombolaName}: ${product.name}`
-                            }));
-                            //await companyChatsRepository.socketPostTombolaProduct(product);
-                            return 200;
-                        }
-                        else {
-                            status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, (0, whatsapp_method_1.textMessage)({
-                                recipientPhone: waResponse.phone_number,
-                                message: `You cannot get point`
-                            }));
-                            return 200;
-                        }
-                    }
-                    else {
-                        const last_message = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).last_message;
-                        if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length === 0) {
-                            if (waResponse.type === "text" || waResponse.type === "button") {
-                                if (waResponse.type === "button") {
-                                    if (waResponse.data.button.text.trim() === "ça ne m'intéresse pas") {
-                                        yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, {
-                                            messaging_product: "whatsapp",
-                                            to: waResponse.phone_number,
-                                            type: "text",
-                                            text: {
-                                                body: "Nous sommes désolé de l'apprendre et nous vous disons à très bientôt"
-                                            }
-                                        });
-                                        chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                                        return res.status(200).send({});
-                                    }
-                                    else {
-                                        chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: waResponse.data.button.text });
-                                        // Save chat
-                                        yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                            text: waResponse.data.button.text,
-                                            is_bot: false,
-                                            is_admin: false,
-                                            date: new Date(),
-                                            is_read: false,
-                                            chat_status: bot_enum_1.ChatStatus.START,
-                                            scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                        }, req.io);
-                                    }
-                                }
-                                else {
-                                    if (waResponse.data.text.body === "Fête des mères, appuyez sur envoyer") {
-                                        yield (0, whatsapp_method_1.sendTemplateMessage)(waResponse.phone_number, waResponse.phone_number_id, token);
-                                        chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                                        return res.status(200).send({});
-                                    }
-                                    else {
-                                        chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: waResponse.data.text.body });
-                                        // Save chat
-                                        yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                            text: waResponse.data.text.body,
-                                            is_bot: false,
-                                            is_admin: false,
-                                            date: new Date(),
-                                            is_read: false,
-                                            chat_status: bot_enum_1.ChatStatus.START,
-                                            scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                        }, req.io);
-                                    }
-                                }
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
-                            }
-                            else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
-                                const label = waResponse.data.interactive.button_reply.title;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: label,
-                                    is_bot: false,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.START,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
-                            }
-                            else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
-                                const label = waResponse.data.interactive.list_reply.title;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: label });
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: label,
-                                    is_bot: false,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.START,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
-                            }
-                            else if (waResponse.type === "order") {
-                                const products = waResponse.data.order.product_items;
-                                const result = yield (0, meta_request_1.getCatalogProducts)();
-                                let order = ``;
-                                let total = 0;
-                                if (result.status === 200) {
-                                    const productsList = result.data.data;
-                                    console.dir(productsList, { depth: null });
-                                    let productItem;
-                                    for (let product of products) {
-                                        productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
-                                        order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                        total += (+product.quantity) * (+product.item_price);
-                                    }
-                                }
-                                else {
-                                    for (let product of products) {
-                                        order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                        total += (+product.quantity) * (+product.item_price);
-                                    }
-                                }
-                                order += `Total: *€${total}*\n\n`;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ received: `\n\n*Command*\n${order}` });
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: `\n\n*Command*\n${order}`,
-                                    is_bot: true,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.START,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
-                            }
-                            chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend = (0, whatsapp_method_1.saveQuestion)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0]);
-                            chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion =
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[0];
-                        }
-                        else if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "text" &&
-                            chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length !== 0) {
-                            if (waResponse.type === "text") {
-                                const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length - 1].received = waResponse.data.text.body;
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: waResponse.data.text.body,
-                                    is_bot: false,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.PENDING,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label);
-                                if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.length > index + 1) {
-                                    data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index + 1]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend = (0, whatsapp_method_1.saveQuestion)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index + 1]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion =
-                                        chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index + 1];
-                                }
-                                else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
-                                    // Save chat
-                                    yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                        text: data.text.body,
-                                        is_bot: true,
-                                        is_admin: false,
-                                        date: new Date(),
-                                        is_read: false,
-                                        chat_status: bot_enum_1.ChatStatus.END,
-                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                    }, req.io);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                                }
-                            }
-                            else {
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion);
-                            }
-                        }
-                        else if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "button") {
-                            if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
-                                const id = waResponse.data.interactive.button_reply.id;
-                                const label = waResponse.data.interactive.button_reply.title;
-                                const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length - 1].received = label;
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: label,
-                                    is_bot: false,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.PENDING,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                const currentLabel = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
-                                const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === currentLabel);
-                                const response = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index]
-                                    .responses.find(resp => resp.id === id);
-                                if (response.questions) {
-                                    data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, response.questions[0]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend = (0, whatsapp_method_1.saveQuestion)(response.questions[0]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario = response.questions;
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion = response.questions[0];
-                                }
-                                else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
-                                    // Save chat
-                                    yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                        text: data.text.body,
-                                        is_bot: true,
-                                        is_admin: false,
-                                        date: new Date(),
-                                        is_read: false,
-                                        chat_status: bot_enum_1.ChatStatus.END,
-                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                    }, req.io);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                                }
-                            }
-                            else {
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion);
-                            }
-                        }
-                        else if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "list") {
-                            if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
-                                const id = waResponse.data.interactive.list_reply.id;
-                                const label = waResponse.data.interactive.list_reply.title;
-                                const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length - 1].received = label;
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: label,
-                                    is_bot: false,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.PENDING,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                const currentLabel = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.label;
-                                const index = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario.findIndex(quest => quest.label === currentLabel);
-                                const response = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario[index]
-                                    .responses.find(resp => resp.id === id);
-                                if (response.questions) {
-                                    data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, response.questions[0]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend = (0, whatsapp_method_1.saveQuestion)(response.questions[0]);
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario = response.questions;
-                                    chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion = response.questions[0];
-                                }
-                                else {
-                                    data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
-                                    // Save chat
-                                    yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                        text: data.text.body,
-                                        is_bot: true,
-                                        is_admin: false,
-                                        date: new Date(),
-                                        is_read: false,
-                                        chat_status: bot_enum_1.ChatStatus.END,
-                                        scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                    }, req.io);
-                                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                                }
-                            }
-                            else {
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion);
-                            }
-                        }
-                        else if (chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion.responseType === "template") {
-                            if (waResponse.type === "order") {
-                                console.dir(waResponse.data, { depth: null });
-                                const products = waResponse.data.order.product_items;
-                                const result = yield (0, meta_request_1.getCatalogProducts)();
-                                let order = ``;
-                                let total = 0;
-                                if (result.status === 200) {
-                                    const productsList = result.data.data;
-                                    console.dir(productsList, { depth: null });
-                                    let productItem;
-                                    for (let product of products) {
-                                        productItem = productsList.find(item => item.retailer_id === product.product_retailer_id);
-                                        order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                        total += (+product.quantity) * (+product.item_price);
-                                    }
-                                }
-                                else {
-                                    for (let product of products) {
-                                        order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
-                                        total += (+product.quantity) * (+product.item_price);
-                                    }
-                                }
-                                order += `Total: *€${total}*\n\n`;
-                                const length = chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.length;
-                                chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats[length - 1].received = `\n\n*Command*\n${order}`;
-                                data = yield (0, whatsapp_method_1.chatToString)(chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).company, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).report_into);
-                                // Save chat
-                                yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                    text: `\n\n*Command*\n${order}`,
-                                    is_bot: true,
-                                    is_admin: false,
-                                    date: new Date(),
-                                    is_read: false,
-                                    chat_status: bot_enum_1.ChatStatus.END,
-                                    scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                                }, req.io);
-                                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
-                            }
-                            else {
-                                data = (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).currentQuestion);
-                            }
-                        }
+                const resultRecieved = yield (0, whatsapp_method_1.getWhatsappResponse)(body);
+                if (!resultRecieved) {
+                    return res.status(200).send({});
+                }
+                const waResponse = resultRecieved;
+                const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+                if (!session) {
+                    return res.status(200).send({});
+                }
+                const token = session.token;
+                const last_message = session.last_message;
+                if (session.chats.length === 0) {
+                    const data = yield this.handleInitialResponse(waResponse, req, token);
+                    if (data) {
                         const status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, data);
-                        if (chat_model_1.sessions.get(waResponse.phone_number).has(waResponse.phone_number_id)) {
-                            chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).chats.push({ send: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend });
-                            // Save chat
-                            yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
-                                text: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).textSend,
-                                is_bot: true,
-                                is_admin: false,
-                                date: new Date(),
-                                is_read: false,
-                                chat_status: bot_enum_1.ChatStatus.PENDING,
-                                scenario_name: chat_model_1.sessions.get(waResponse.phone_number).get(waResponse.phone_number_id).scenario_name
-                            }, req.io);
-                        }
-                        else {
-                            if (last_message) {
-                                yield (0, whatsapp_method_1.forbiddenUserResponse)({
-                                    recipientPhone: waResponse.phone_number,
-                                    message: last_message
-                                }, waResponse.phone_number_id, token);
-                            }
-                        }
-                        return res.status(200).send({});
+                        const send = (0, whatsapp_method_1.getTextSendWAMessageModel)(data);
+                        const received = (0, whatsapp_method_1.getTextMessageWAResponseModel)(waResponse);
+                        console.log('send =======', send);
+                        console.log('received =======', received);
+                        session.chats.push({ send, received });
+                        yield this.saveChatMessage(waResponse, session, send, bot_enum_1.ChatStatus.PENDING, req.io, true, false);
                     }
                 }
                 else {
-                    return res.status(200).send({});
+                    const data = yield this.handleSubsequentResponse(waResponse, req, token);
+                    if (data) {
+                        const status = yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, data);
+                        const send = (0, whatsapp_method_1.getTextSendWAMessageModel)(data);
+                        const received = (0, whatsapp_method_1.getTextMessageWAResponseModel)(waResponse);
+                        console.log('send =======', send);
+                        console.log('received =======', received);
+                        session.chats.push({ send, received });
+                        console.log('session.chats ===', session.chats);
+                        yield this.saveChatMessage(waResponse, session, send, bot_enum_1.ChatStatus.PENDING, req.io, true, false);
+                    }
+                    else if (last_message) {
+                        yield (0, whatsapp_method_1.forbiddenUserResponse)({
+                            recipientPhone: waResponse.phone_number,
+                            message: last_message
+                        }, waResponse.phone_number_id, token);
+                    }
                 }
+                return res.status(200).send({});
             }
             catch (error) {
-                console.log(error);
+                console.error(error);
                 return res.status(500).send();
             }
         });
     }
+    handleInitialResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            let data;
+            switch (waResponse.type) {
+                case "text":
+                case "button":
+                    data = yield this.handleTextOrButtonResponse(waResponse, req, token);
+                    break;
+                case "interactive":
+                    data = yield this.handleInteractiveResponse(waResponse, req);
+                    break;
+                case "order":
+                    data = yield this.handleOrderResponse(waResponse, req, token);
+                    break;
+                case "image":
+                    data = yield this.handleImageResponse(waResponse, req, token);
+                    break;
+            }
+            session.textSend = (0, whatsapp_method_1.saveQuestion)(session.scenario[0]);
+            session.currentQuestion = session.scenario[0];
+            return data;
+        });
+    }
+    handleSubsequentResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            let data;
+            console.log('chats ********', session.chats);
+            console.log("waResponse", waResponse);
+            switch (waResponse.type) {
+                case "text":
+                    data = yield this.handleTextResponse(waResponse, req, token);
+                    break;
+                case "image":
+                    data = yield this.handleImageResponse(waResponse, req, token);
+                    break;
+                case "interactive":
+                    data = yield this.handleButtonAndListReplyResponse(waResponse, req);
+                    break;
+                case "template":
+                    data = yield this.handleTemplateResponse(waResponse, req, token);
+                    break;
+            }
+            return data;
+        });
+    }
+    handleTextOrButtonResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            if (waResponse.type === "button" && waResponse.data.button.text.trim() === "ça ne m'intéresse pas") {
+                const dataMessage = this.createTextMessage(waResponse.phone_number, "Nous sommes désolé de l'apprendre et nous vous disons à très bientôt");
+                yield (0, whatsapp_method_1.sendWhatsappMessage)(waResponse.phone_number_id, token, dataMessage);
+                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                return null;
+            }
+            yield this.saveChatMessage(waResponse, session, waResponse.data.text.body || waResponse.data.button.text, bot_enum_1.ChatStatus.START, req.io, false, false);
+            if (waResponse.data.text.body === "Fête des mères, appuyez sur envoyer") {
+                yield (0, whatsapp_method_1.sendTemplateMessage)(waResponse.phone_number, waResponse.phone_number_id, token);
+                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                return null;
+            }
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.scenario[0]);
+        });
+    }
+    handleInteractiveResponse(waResponse, req) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b, _c;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            const label = ((_b = waResponse.data.interactive.button_reply) === null || _b === void 0 ? void 0 : _b.title) || ((_c = waResponse.data.interactive.list_reply) === null || _c === void 0 ? void 0 : _c.title);
+            yield this.saveChatMessage(waResponse, session, label, bot_enum_1.ChatStatus.START, req.io, false, false);
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.scenario[0]);
+        });
+    }
+    handleOrderResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            const orderDetails = yield this.getOrderDetails(waResponse, token);
+            yield this.saveChatMessage(waResponse, session, `\n\n*Command*\n${orderDetails}`, bot_enum_1.ChatStatus.START, req.io, false, false);
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.scenario[0]);
+        });
+    }
+    handleImageResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            const resUrl = yield (0, upload_file_from_webhook_1.getUrlWhatsappFile)(waResponse.data.image.id, token);
+            const url = yield (0, upload_file_from_webhook_1.downloadWhatsappFile)(resUrl.url, token, resUrl.mime_type);
+            yield this.saveChatMessage(waResponse, session, url, bot_enum_1.ChatStatus.PENDING, req.io, false, false);
+            const index = session.scenario.findIndex(quest => quest.label === session.currentQuestion.label);
+            if (session.scenario.length > index + 1) {
+                session.currentQuestion = session.scenario[index + 1];
+                (_b = chat_model_1.sessions.get(waResponse.phone_number)) === null || _b === void 0 ? void 0 : _b.set(waResponse.phone_number_id, session);
+                return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.scenario[index + 1]);
+            }
+            else {
+                const data = yield (0, whatsapp_method_1.chatToString)(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
+                yield this.saveChatMessage(waResponse, session, data.text.body, bot_enum_1.ChatStatus.END, req.io, false, false);
+                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                return data;
+            }
+        });
+    }
+    handleTextResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            if (waResponse.type === "text") {
+                yield this.saveChatMessage(waResponse, session, waResponse.data.text.body, bot_enum_1.ChatStatus.PENDING, req.io, false, false);
+                const index = session.scenario.findIndex(quest => quest.label === session.currentQuestion.label);
+                if (session.scenario.length > index + 1) {
+                    session.currentQuestion = session.scenario[index + 1];
+                    (_b = chat_model_1.sessions.get(waResponse.phone_number)) === null || _b === void 0 ? void 0 : _b.set(waResponse.phone_number_id, session);
+                    return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.scenario[index + 1]);
+                }
+                else {
+                    const data = yield (0, whatsapp_method_1.chatToString)(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
+                    //await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io);
+                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                    return data;
+                }
+            }
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.currentQuestion);
+        });
+    }
+    handleButtonAndListReplyResponse(waResponse, req) {
+        return __awaiter(this, void 0, void 0, function* () {
+            if (waResponse.data.interactive.type === "button_reply") {
+                return yield this.handleButtonResponse(waResponse, req);
+            }
+            else if (waResponse.data.interactive.type === "list_reply") {
+                return yield this.handleListResponse(waResponse, req);
+            }
+        });
+    }
+    handleButtonResponse(waResponse, req) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+                const label = waResponse.data.interactive.button_reply.title;
+                yield this.saveChatMessage(waResponse, session, label, bot_enum_1.ChatStatus.PENDING, req.io, false, false);
+                const currentLabel = session.currentQuestion.label;
+                const index = session.scenario.findIndex(quest => quest.label === currentLabel);
+                const response = session.scenario[index].responses.find(resp => resp.id === waResponse.data.interactive.button_reply.id);
+                if (response.questions) {
+                    session.scenario = response.questions;
+                    session.currentQuestion = response.questions[0];
+                    (_b = chat_model_1.sessions.get(waResponse.phone_number)) === null || _b === void 0 ? void 0 : _b.set(waResponse.phone_number_id, session);
+                    return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, response.questions[0]);
+                }
+                else {
+                    const data = yield (0, whatsapp_method_1.chatToString)(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
+                    //await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io);
+                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                    return data;
+                }
+            }
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.currentQuestion);
+        });
+    }
+    handleListResponse(waResponse, req) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a, _b;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
+                const label = waResponse.data.interactive.list_reply.title;
+                yield this.saveChatMessage(waResponse, session, label, bot_enum_1.ChatStatus.PENDING, req.io, false, false);
+                const currentLabel = session.currentQuestion.label;
+                const index = session.scenario.findIndex(quest => quest.label === currentLabel);
+                const response = session.scenario[index].responses.find(resp => resp.id === waResponse.data.interactive.list_reply.id);
+                if (response.questions) {
+                    session.scenario = response.questions;
+                    session.currentQuestion = response.questions[0];
+                    (_b = chat_model_1.sessions.get(waResponse.phone_number)) === null || _b === void 0 ? void 0 : _b.set(waResponse.phone_number_id, session);
+                    return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, response.questions[0]);
+                }
+                else {
+                    const data = yield (0, whatsapp_method_1.chatToString)(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
+                    //await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io);
+                    chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                    return data;
+                }
+            }
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.currentQuestion);
+        });
+    }
+    handleTemplateResponse(waResponse, req, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            var _a;
+            const session = (_a = chat_model_1.sessions.get(waResponse.phone_number)) === null || _a === void 0 ? void 0 : _a.get(waResponse.phone_number_id);
+            if (!session)
+                return null;
+            if (waResponse.type === "order") {
+                const orderDetails = yield this.getOrderDetails(waResponse, token);
+                const data = yield (0, whatsapp_method_1.chatToString)(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
+                yield this.saveChatMessage(waResponse, session, data.text.body, bot_enum_1.ChatStatus.END, req.io, false, false);
+                chat_model_1.sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
+                return data;
+            }
+            return (0, whatsapp_method_1.askQuestion)(waResponse.phone_number, session.currentQuestion);
+        });
+    }
+    getOrderDetails(waResponse, token) {
+        return __awaiter(this, void 0, void 0, function* () {
+            const products = waResponse.data.order.product_items;
+            const result = yield (0, meta_request_1.getCatalogProducts)();
+            let order = ``;
+            let total = 0;
+            if (result.status === 200) {
+                const productsList = result.data.data;
+                console.log(productsList);
+                for (let product of products) {
+                    const productItem = productsList.find((item) => item.retailer_id === product.product_retailer_id);
+                    order += `produit: *${productItem.name}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                    total += (+product.quantity) * (+product.item_price);
+                }
+            }
+            else {
+                for (let product of products) {
+                    order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
+                    total += (+product.quantity) * (+product.item_price);
+                }
+            }
+            order += `Total: *€${total}*\n\n`;
+            return order;
+        });
+    }
+    saveChatMessage(waResponse, session, text, status, io, is_bot, is_admin) {
+        return __awaiter(this, void 0, void 0, function* () {
+            yield companyChatsRepository.addChatMessage(waResponse.phone_number_id, waResponse.phone_number, {
+                text,
+                is_bot,
+                is_admin,
+                date: new Date(),
+                is_read: false,
+                chat_status: status,
+                scenario_name: session.scenario_name
+            }, io);
+        });
+    }
+    createTextMessage(phoneNumber, message) {
+        return {
+            messaging_product: "whatsapp",
+            recipient_type: "individual",
+            to: phoneNumber,
+            type: "text",
+            text: { body: message }
+        };
+    }
 };
 exports.CompanyChatsService = CompanyChatsService;
 exports.CompanyChatsService = CompanyChatsService = __decorate([
-    (0, tsyringe_1.autoInjectable)()
+    (0, tsyringe_1.autoInjectable)(),
+    __metadata("design:paramtypes", [])
 ], CompanyChatsService);
 //# sourceMappingURL=company-chats-service.js.map

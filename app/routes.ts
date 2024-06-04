@@ -78,7 +78,7 @@ router.get(
     credentialsService.getCredentials
 );
 router.get(
-    '/credentials/user/emai/',
+    '/credentials/user/email/',
     credentialsService.getCredentialsByEmail
 );
 router.post(

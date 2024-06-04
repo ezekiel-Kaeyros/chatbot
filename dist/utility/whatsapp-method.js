@@ -12,7 +12,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getContentWhatsappMessage = exports.sendProductsTemplate = exports.sendTemplateOfProductsCatalog = exports.sendTemplateMessage = exports.bulkmessageUpdateBroadcastStatus = exports.tombolaSaveRandomDraw = exports.loyaltyProgramSavePoint = exports.getTombolaName = exports.getPrgramName = exports.markMessageAsRead = exports.findImageLinks = exports.chatSessionTimeout = exports.chatToString = exports.saveQuestion = exports.askQuestion = exports.catalogMessage = exports.productsTemplateMessage = exports.listMessage = exports.buttonsMessage = exports.imageMessage = exports.textMessage = exports.sendWhatsappMessage = exports.forbiddenUserResponse = exports.getSuitableScenario = exports.getWhatsappResponse = void 0;
+exports.getContentWhatsappMessage = exports.sendProductsTemplate = exports.sendTemplateOfProductsCatalog = exports.sendTemplateMessage = exports.formatBodyTemplateMessage = exports.bulkmessageUpdateBroadcastStatus = exports.tombolaSaveRandomDraw = exports.loyaltyProgramSavePoint = exports.getTombolaName = exports.getPrgramName = exports.markMessageAsRead = exports.findImageLinks = exports.chatSessionTimeout = exports.chatToString = exports.saveQuestion = exports.askQuestion = exports.getTextMessageWAResponseModel = exports.getTextSendWAMessageModel = exports.catalogMessage = exports.productsTemplateMessage = exports.listMessage = exports.buttonsMessage = exports.imageMessage = exports.textMessage = exports.sendWhatsappMessage = exports.forbiddenUserResponse = exports.getSuitableScenario = exports.getWhatsappResponse = void 0;
 const axios_1 = __importDefault(require("axios"));
 const chat_model_1 = require("../models/chat-model");
 const scenario_repository_1 = require("../repository/scenario-repository");
@@ -33,7 +33,7 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                 const token = (yield credentialsRepository.getByPhoneNumber(company)).token;
                 yield (0, exports.forbiddenUserResponse)({
                     recipientPhone: phone,
-                    message: "Session terminéex"
+                    message: "Session terminée"
                 }, company, token);
                 yield companyChatsRepository.addChatMessage(company, phone, {
                     text: "Session terminée",
@@ -233,7 +233,6 @@ const getWhatsappResponse = (body) => __awaiter(void 0, void 0, void 0, function
                     }
                 }
             }
-            console.log(waResponse.data);
             return waResponse;
         }
         return false;
@@ -305,7 +304,7 @@ const textMessage = (data) => {
         type: "text",
         text: {
             body: data.message
-        }
+        },
     };
 };
 exports.textMessage = textMessage;
@@ -420,7 +419,44 @@ const catalogMessage = (data) => {
     };
 };
 exports.catalogMessage = catalogMessage;
+const getTextSendWAMessageModel = (message) => {
+    if (message.type === 'text') {
+        const newMessage = message;
+        return newMessage.text.body;
+    }
+    else if (message.type === 'image') {
+        const newMessage = message;
+        return newMessage.image.link;
+    }
+    else if (message.type === 'interactive') {
+        const newMessage = message;
+        return newMessage.interactive.body.text;
+    }
+    else if (message.type === 'template') {
+        const newMessage = message;
+        return newMessage.template.name;
+    }
+};
+exports.getTextSendWAMessageModel = getTextSendWAMessageModel;
+const getTextMessageWAResponseModel = (waResponse) => {
+    let message = '';
+    if (waResponse.type === "text") {
+        message = waResponse.data.text.body.trim();
+    }
+    else if (waResponse.type === "button") {
+        message = waResponse.data.button.text.trim();
+    }
+    else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
+        message = waResponse.data.interactive.button_reply.title;
+    }
+    else if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
+        message = waResponse.data.interactive.list_reply.title;
+    }
+    return message;
+};
+exports.getTextMessageWAResponseModel = getTextMessageWAResponseModel;
 const askQuestion = (recipientPhone, question) => {
+    console.log('question.responseType ======== ', question.responseType);
     if (question.responseType === "text") {
         return (0, exports.textMessage)({ recipientPhone, message: question.label });
     }
@@ -465,11 +501,9 @@ const saveQuestion = (question) => {
         return question.label;
     if (question.responseType === "image")
         return question.link;
-    else {
-        let text = `${question.label}`;
-        question.responses.forEach(resp => text + `\n${resp.label}`);
-        return text;
-    }
+    let text = `${question.label}`;
+    question.responses.forEach(resp => text + `\n${resp.label}`);
+    return text;
 };
 exports.saveQuestion = saveQuestion;
 const chatToString = (chats_1, recipientPhone_1, username_1, ...args_1) => __awaiter(void 0, [chats_1, recipientPhone_1, username_1, ...args_1], void 0, function* (chats, recipientPhone, username, phoneNumberId = '', company = '', report_into = '') {
@@ -573,6 +607,33 @@ const bulkmessageUpdateBroadcastStatus = (data, phone_number_id) => __awaiter(vo
     }, phone_number_id);
 });
 exports.bulkmessageUpdateBroadcastStatus = bulkmessageUpdateBroadcastStatus;
+const formatBodyTemplateMessage = (phone_number, name) => {
+    return {
+        messaging_product: "whatsapp",
+        to: phone_number,
+        type: "template",
+        template: {
+            name: name,
+            language: {
+                code: "fr"
+            },
+            components: [
+                {
+                    type: "header",
+                    parameters: [
+                        {
+                            type: "image",
+                            image: {
+                                link: "https://res.cloudinary.com/devskills/image/upload/v1712220488/motherbirthday_vlfuh5.jpg"
+                            }
+                        }
+                    ]
+                }
+            ]
+        }
+    };
+};
+exports.formatBodyTemplateMessage = formatBodyTemplateMessage;
 const sendTemplateMessage = (phone_number, phone_number_id, token) => __awaiter(void 0, void 0, void 0, function* () {
     return (0, axios_1.default)({
         method: "POST",

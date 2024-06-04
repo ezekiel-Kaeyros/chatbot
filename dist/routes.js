@@ -13,7 +13,7 @@ const multerConfig_1 = __importDefault(require("./utility/multerConfig"));
 const router = (0, express_1.Router)();
 const scenarioService = tsyringe_1.container.resolve(scenario_service_1.ScenarioService);
 const credentialsService = tsyringe_1.container.resolve(credentials_service_1.CredentialsService);
-const companyChatsService = tsyringe_1.container.resolve(company_chats_service_1.CompanyChatsService);
+const companyChatsService = new company_chats_service_1.CompanyChatsService();
 const adminChatsService = tsyringe_1.container.resolve(admin_chat_service_1.AdminChatsService);
 router.get('/', (req, res) => res.send('App start'));
 //SCENARIO
@@ -26,12 +26,12 @@ router.post('/active', scenarioService.activeScenario);
 router.get('/scenarios/:phone_number_id', scenarioService.getCompanyScenarios);
 router.post('/scenarios/upload-file', multerConfig_1.default.single('file'), scenarioService.uploadFile);
 // CHATBOT
-router.get('/webhook', companyChatsService.getMessage);
-router.post('/webhook', companyChatsService.sendMessage);
+router.get('/webhook', (req, res) => companyChatsService.getMessage(req, res));
+router.post('/webhook', (req, res) => companyChatsService.sendMessage(req, res));
 // CREDENTIALS
 router.get('/credentials', credentialsService.getAllCredentials);
 router.get('/credentials/:id', credentialsService.getCredentials);
-router.get('/credentials/user/emai/', credentialsService.getCredentialsByEmail);
+router.get('/credentials/user/email/', credentialsService.getCredentialsByEmail);
 router.post('/credentials', credentialsService.createCredentials);
 router.put('/credentials', credentialsService.updateCredentials);
 router.delete('/credentials', credentialsService.deleteCredentials);

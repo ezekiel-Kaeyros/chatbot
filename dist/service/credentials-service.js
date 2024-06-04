@@ -37,13 +37,13 @@ let CredentialsService = class CredentialsService {
     }
     createCredentials(req, res) {
         return __awaiter(this, void 0, void 0, function* () {
+            console.log('helllo======');
             try {
                 const input = (0, class_transformer_1.plainToClass)(credentials_input_1.CredentialsInput, req.body);
-                const error = yield (0, errors_1.AppValidationError)(input);
-                if (error)
-                    return (0, response_1.ErrorResponse)(404, error);
-                console.log(input);
-                const data = yield repository.create(input);
+                // const error = await AppValidationError(input);
+                // if (error) return ErrorResponse(404, error);
+                // console.log(input);
+                const data = yield repository.create(req.body);
                 return res
                     .status(201)
                     .send(data);
@@ -107,9 +107,7 @@ let CredentialsService = class CredentialsService {
                 if (!credentialsId)
                     return (0, response_1.ErrorResponse)(404, "please provide credentials id");
                 const data = yield repository.getById(credentialsId);
-                return res
-                    .status(200)
-                    .send(data);
+                return res.status(200).send(data);
             }
             catch (error) {
                 console.log(error);

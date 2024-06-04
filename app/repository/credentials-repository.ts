@@ -7,13 +7,15 @@ export class CredentialsRepository {
         company,
         phone_number_id,
         verify_token,
-        token
+        token,
+        email
     }: CredentialsModel) {
         return credentials.create({
             company,
             phone_number_id,
             verify_token,
-            token
+            token,
+            email
         });
     }
 
@@ -22,7 +24,7 @@ export class CredentialsRepository {
         phone_number_id,
         verify_token,
         token,
-        _id
+        _id,
     }: CredentialsModel) {
         let existingCredentials = await credentials.findById(_id) as CredentialsDoc;
         existingCredentials.company = company;

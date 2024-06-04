@@ -77,23 +77,37 @@ class CompanyChatRespository {
     }
     updateStatusLastChatConversation(phone_number_id, phone_number, status) {
         return __awaiter(this, void 0, void 0, function* () {
+            var _a;
             try {
-                const companyChats = (yield company_chats_model_1.companiesChats.findOne({
+                // Mise à jour de la conversation avec le chat le plus récent
+                const result = yield company_chats_model_1.companiesChats.updateOne({
                     phone_number_id,
-                }));
-                if (companyChats === null || companyChats === void 0 ? void 0 : companyChats.conversations) {
-                    const chatsConversation = companyChats.conversations.find((conversation) => conversation.phone_number === phone_number);
-                    if (!(chatsConversation === null || chatsConversation === void 0 ? void 0 : chatsConversation.chat_messages.length)) {
-                        chatsConversation.chat_messages[chatsConversation.chat_messages.length - 1].chat_status = status;
+                    'conversations.phone_number': phone_number,
+                    // Pour trouver le message le plus récent
+                    'conversations.chat_messages.date': { $exists: true }
+                }, {
+                    // Utilisation de $set pour mettre à jour le statut du message le plus récent
+                    $set: {
+                        'conversations.$[conversation].chat_messages.$[message].chat_status': status
                     }
-                    companyChats === null || companyChats === void 0 ? void 0 : companyChats.conversations.map((conversation) => {
-                        if (conversation.phone_number === phone_number) {
-                            conversation = chatsConversation;
-                        }
-                    });
-                    //companyChats.markModified("conversations");
-                    return yield company_chats_model_1.companiesChats.findByIdAndUpdate(companyChats.id, companyChats);
+                }, {
+                    arrayFilters: [
+                        { 'conversation.phone_number': phone_number },
+                        { 'message.date': { $eq: (_a = (yield company_chats_model_1.companiesChats.aggregate([
+                                    { $match: { phone_number_id: phone_number_id, 'conversations.phone_number': phone_number } },
+                                    { $unwind: "$conversations" },
+                                    { $match: { 'conversations.phone_number': phone_number } },
+                                    { $unwind: "$conversations.chat_messages" },
+                                    { $sort: { 'conversations.chat_messages.date': -1 } },
+                                    { $limit: 1 },
+                                    { $project: { 'conversations.chat_messages.date': 1 } }
+                                ]))[0]) === null || _a === void 0 ? void 0 : _a.conversations.chat_messages.date } }
+                    ]
+                });
+                if (result.modifiedCount === 0) {
+                    throw new Error("Aucune conversation ou message correspondant trouvé pour la mise à jour.");
                 }
+                return result;
             }
             catch (error) {
                 console.error('Error updating chat status:', error);

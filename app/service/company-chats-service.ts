@@ -76,7 +76,7 @@ export class CompanyChatsService {
                     console.log('send =======', send);
                     console.log('received =======', received);
                     session.chats.push({send, received});
-                    await this.saveChatMessage(waResponse, session, send, ChatStatus.PENDING, req.io);
+                    await this.saveChatMessage(waResponse, session, send, ChatStatus.PENDING, req.io, true, false);
                 }
             } else {
                 const data: SendWAMessageModel = await this.handleSubsequentResponse(waResponse, req, token);
@@ -89,7 +89,7 @@ export class CompanyChatsService {
 
                     session.chats.push({send, received});
                     console.log('session.chats ===', session.chats);
-                    await this.saveChatMessage(waResponse, session, send, ChatStatus.PENDING, req.io);
+                    await this.saveChatMessage(waResponse, session, send, ChatStatus.PENDING, req.io, true, false);
                 } else if (last_message) {
                     await forbiddenUserResponse({
                         recipientPhone: waResponse.phone_number,
@@ -167,7 +167,15 @@ export class CompanyChatsService {
             return null;
         }
     
-        await this.saveChatMessage(waResponse, session, waResponse.data.text.body || waResponse.data.button.text, ChatStatus.START, req.io);
+        await this.saveChatMessage(
+            waResponse,
+            session, 
+            waResponse.data.text.body || waResponse.data.button.text, 
+            ChatStatus.START, 
+            req.io,
+            false,
+            false
+        );
     
         if (waResponse.data.text.body === "Fête des mères, appuyez sur envoyer") {
             await sendTemplateMessage(waResponse.phone_number, waResponse.phone_number_id, token);
@@ -183,7 +191,7 @@ export class CompanyChatsService {
         if (!session) return null;
     
         const label = waResponse.data.interactive.button_reply?.title || waResponse.data.interactive.list_reply?.title;
-        await this.saveChatMessage(waResponse, session, label, ChatStatus.START, req.io);
+        await this.saveChatMessage(waResponse, session, label, ChatStatus.START, req.io, false, false);
         
         return askQuestion(waResponse.phone_number, session.scenario[0]);
     }
@@ -193,7 +201,7 @@ export class CompanyChatsService {
         if (!session) return null;
     
         const orderDetails = await this.getOrderDetails(waResponse, token);
-        await this.saveChatMessage(waResponse, session, `\n\n*Command*\n${orderDetails}`, ChatStatus.START, req.io);
+        await this.saveChatMessage(waResponse, session, `\n\n*Command*\n${orderDetails}`, ChatStatus.START, req.io, false, false);
         return askQuestion(waResponse.phone_number, session.scenario[0]);
     }
     
@@ -204,7 +212,7 @@ export class CompanyChatsService {
     
         const resUrl = await getUrlWhatsappFile(waResponse.data.image.id, token);
         const url = await downloadWhatsappFile(resUrl.url, token, resUrl.mime_type);
-        await this.saveChatMessage(waResponse, session, url, ChatStatus.PENDING, req.io);
+        await this.saveChatMessage(waResponse, session, url, ChatStatus.PENDING, req.io, false, false);
         const index = session.scenario.findIndex(quest => quest.label === session.currentQuestion.label);
         if (session.scenario.length > index + 1) {
             session.currentQuestion = session.scenario[index + 1];
@@ -212,7 +220,7 @@ export class CompanyChatsService {
             return askQuestion(waResponse.phone_number, session.scenario[index + 1]);
         } else {
             const data = await chatToString(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
-            await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io);
+            await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io, false, false);
             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
             return data;
         }
@@ -223,7 +231,7 @@ export class CompanyChatsService {
         if (!session) return null;
     
         if (waResponse.type === "text") {
-            await this.saveChatMessage(waResponse, session, waResponse.data.text.body, ChatStatus.PENDING, req.io);
+            await this.saveChatMessage(waResponse, session, waResponse.data.text.body, ChatStatus.PENDING, req.io, false, false);
     
             const index = session.scenario.findIndex(quest => quest.label === session.currentQuestion.label);
             if (session.scenario.length > index + 1) {
@@ -255,7 +263,7 @@ export class CompanyChatsService {
     
         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "button_reply") {
             const label = waResponse.data.interactive.button_reply.title;
-            await this.saveChatMessage(waResponse, session, label, ChatStatus.PENDING, req.io);
+            await this.saveChatMessage(waResponse, session, label, ChatStatus.PENDING, req.io, false, false);
     
             const currentLabel = session.currentQuestion.label;
             const index = session.scenario.findIndex(quest => quest.label === currentLabel);
@@ -283,7 +291,7 @@ export class CompanyChatsService {
     
         if (waResponse.type === "interactive" && waResponse.data.interactive.type === "list_reply") {
             const label = waResponse.data.interactive.list_reply.title;
-            await this.saveChatMessage(waResponse, session, label, ChatStatus.PENDING, req.io);
+            await this.saveChatMessage(waResponse, session, label, ChatStatus.PENDING, req.io, false, false);
     
             const currentLabel = session.currentQuestion.label;
             const index = session.scenario.findIndex(quest => quest.label === currentLabel);
@@ -313,7 +321,7 @@ export class CompanyChatsService {
             const orderDetails = await this.getOrderDetails(waResponse, token);
     
             const data = await chatToString(session.chats, waResponse.phone_number, waResponse.name, waResponse.phone_number_id, session.company, session.report_into);
-            await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io);
+            await this.saveChatMessage(waResponse, session, data.text.body, ChatStatus.END, req.io, false, false);
             sessions.get(waResponse.phone_number).delete(waResponse.phone_number_id);
             return data;
         }
@@ -341,19 +349,19 @@ export class CompanyChatsService {
                 order += `produit: *${product.product_retailer_id}*\nqté: *${product.quantity}*\nprix unit: *€${product.item_price}*\nmontant: *€${(+product.quantity) * (+product.item_price)}*\n\n`;
                 total += (+product.quantity) * (+product.item_price);
             }
-         }
+        }
         order += `Total: *€${total}*\n\n`;
         return order;
     }
     
-    async saveChatMessage(waResponse: WAResponseModel, session: Conversation, text: string, status: ChatStatus, io: any) {
+    async saveChatMessage(waResponse: WAResponseModel, session: Conversation, text: string, status: ChatStatus, io: any, is_bot: boolean, is_admin: boolean) {
         await companyChatsRepository.addChatMessage(
             waResponse.phone_number_id,
             waResponse.phone_number,
             {
                 text,
-                is_bot: true,
-                is_admin: false,
+                is_bot,
+                is_admin,
                 date: new Date(),
                 is_read: false,
                 chat_status: status,
