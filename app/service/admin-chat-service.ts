@@ -86,13 +86,17 @@ export class AdminChatsService {
                     const index = chats.findIndex(
                         message => message.is_bot === false
                     );
-                    const timeLeft = chatSessionTimeout(chats[index].date, new Date())/60;
-                    if (timeLeft < 24) {
-                        if (chats[0].chat_status !== ChatStatus.PENDING) chats[0].chat_status = ChatStatus.OPEN;
-                    } else {
-                        chats[0].chat_status = ChatStatus.EXPIRED;
+                    
+                    if (index >= 0) {
+                        const timeLeft = chatSessionTimeout(chats[index]?.date, new Date())/60;
+                        if (timeLeft < 24) {
+                            if (chats[0].chat_status !== ChatStatus.PENDING) chats[0].chat_status = ChatStatus.OPEN;
+                        } else {
+                            chats[0].chat_status = ChatStatus.EXPIRED;
+                        }
+                        conv.chat_messages = chats.reverse();
                     }
-                    conv.chat_messages = chats.reverse();
+                   
                 }
             }
             data.conversations = conversations;
